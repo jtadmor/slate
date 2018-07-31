@@ -703,7 +703,13 @@ class Value extends Record(DEFAULTS) {
     value = value.set('document', document)
 
     value = value.mapRanges(range => {
-      return range.merge({ anchorPath: null, focusPath: null })
+      const { anchorPath, focusPath } = range
+      const ap = PathUtils.updatePathOnTargetChange(anchorPath, path, true)
+      const fp = PathUtils.updatePathOnTargetChange(focusPath, path, true)
+
+      return ap !== anchorPath || fp !== focusPath
+        ? range.merge({ anchorPath: ap, focusPath: fp })
+        : range
     })
 
     return value
@@ -761,7 +767,7 @@ class Value extends Record(DEFAULTS) {
   }
 
   /**
-   * Merge a node backwards its previous sibling.
+   * Merge a node backwards with its previous sibling.
    *
    * @param {List|Key} path
    * @return {Value}
@@ -790,7 +796,14 @@ class Value extends Record(DEFAULTS) {
         }
       }
 
-      range = range.merge({ anchorPath: null, focusPath: null })
+      const { anchorPath, focusPath } = range
+      const ap = PathUtils.updatePathOnTargetChange(anchorPath, path, false)
+      const fp = PathUtils.updatePathOnTargetChange(focusPath, path, false)
+
+      if (ap !== anchorPath || fp !== focusPath) {
+        range = range.merge({ anchorPath: ap, focusPath: fp })
+      }
+
       return range
     })
 
@@ -813,10 +826,19 @@ class Value extends Record(DEFAULTS) {
     let value = this
     let { document } = value
     document = document.moveNode(path, newPath, newIndex)
+    newPath = document.resolvePath(newPath, newIndex)
     value = value.set('document', document)
 
     value = value.mapRanges(range => {
-      return range.merge({ anchorPath: null, focusPath: null })
+      const { anchorPath, focusPath } = range
+      let ap = PathUtils.updatePathOnTargetChange(anchorPath, path, false)
+      ap = PathUtils.updatePathOnTargetChange(ap, newPath, true)
+      let fp = PathUtils.updatePathOnTargetChange(focusPath, path, false)
+      fp = PathUtils.updatePathOnTargetChange(fp, newPath, true)
+
+      return ap !== anchorPath || fp !== focusPath
+        ? range.merge({ anchorPath: ap, focusPath: fp })
+        : range
     })
 
     return value
@@ -860,7 +882,12 @@ class Value extends Record(DEFAULTS) {
     value = value.set('document', document)
 
     value = value.mapRanges(range => {
-      const { startKey, endKey } = range
+      const { startKey, endKey, anchorPath, focusPath } = range
+
+      const ap = PathUtils.updatePathOnTargetChange(anchorPath, path, false)
+      const fp = PathUtils.updatePathOnTargetChange(focusPath, path, false)
+
+      range = range.merge({ anchorPath: ap, focusPath: fp })
 
       if (node.hasNode(startKey)) {
         range = prev
@@ -874,7 +901,6 @@ class Value extends Record(DEFAULTS) {
           : next ? range.moveEndTo(next.key, 0) : range.deselect()
       }
 
-      range = range.merge({ anchorPath: null, focusPath: null })
       return range
     })
 
@@ -902,13 +928,13 @@ class Value extends Record(DEFAULTS) {
     value = value.clearAtomicRanges(node.key, offset, offset + length)
 
     value = value.mapRanges(range => {
-      const { anchorKey } = range
+      const { anchorKey, anchorOffset } = range
 
       if (anchorKey === node.key) {
-        return range.anchorOffset >= rangeOffset
+        return anchorOffset >= rangeOffset
           ? range.moveAnchor(-length)
-          : range.anchorOffset > offset
-            ? range.moveAnchorTo(range.anchorKey, offset)
+          : anchorOffset > offset
+            ? range.moveAnchorTo(anchorKey, offset)
             : range
       }
 
@@ -916,14 +942,12 @@ class Value extends Record(DEFAULTS) {
     })
 
     value = value.mapRanges(range => {
-      const { focusKey } = range
+      const { focusKey, focusOffset } = range
 
       if (focusKey === node.key) {
-        return range.focusOffset >= rangeOffset
+        return focusOffset >= rangeOffset
           ? range.moveFocus(-length)
-          : range.focusOffset > offset
-            ? range.moveFocusTo(range.focusKey, offset)
-            : range
+          : focusOffset > offset ? range.moveFocusTo(focusKey, offset) : range
       }
 
       return range
@@ -1001,21 +1025,50 @@ class Value extends Record(DEFAULTS) {
     const node = document.assertNode(path)
     value = value.set('document', newDocument)
 
+    const next = newDocument.getNextSibling(path)
+
     value = value.mapRanges(range => {
-      const next = newDocument.getNextText(node.key)
-      const { startKey, startOffset, endKey, endOffset } = range
+      const {
+        startKey,
+        startOffset,
+        endKey,
+        endOffset,
+        startPath,
+        endPath,
+        isBackward,
+      } = range
 
-      // If the start was after the split, move it to the next node.
-      if (node.key === startKey && position <= startOffset) {
-        range = range.moveStartTo(next.key, startOffset - position)
+      if (node.object === 'text') {
+        if (node.key === startKey && position <= startOffset) {
+          const newPath = PathUtils.increment(startPath)
+          range = range.moveStartTo(next.key, startOffset - position, newPath)
+        }
+
+        // If the end was after the split, move it to the next node.
+        if (node.key === endKey && position <= endOffset) {
+          const newPath = PathUtils.increment(endPath)
+          range = range.moveEndTo(next.key, endOffset - position, newPath)
+        }
+      } else {
+        const text = next.getFirstText()
+        // Increment by 2 at parent level if inline, because a blank text was also inserted between the split inlines
+        const incr = node.object === 'inline' ? 2 : 1
+
+        if (startKey === text.key) {
+          const newPath = PathUtils.increment(
+            startPath,
+            incr,
+            startPath.size - 2
+          )
+          range = range.set(isBackward ? 'focusPath' : 'anchorPath', newPath)
+        }
+
+        if (endKey === text.key) {
+          const newPath = PathUtils.increment(endPath, incr, endPath.size - 2)
+          range = range.set(isBackward ? 'anchorPath' : 'focusPath', newPath)
+        }
       }
 
-      // If the end was after the split, move it to the next node.
-      if (node.key === endKey && position <= endOffset) {
-        range = range.moveEndTo(next.key, endOffset - position)
-      }
-
-      range = range.merge({ anchorPath: null, focusPath: null })
       return range
     })
 

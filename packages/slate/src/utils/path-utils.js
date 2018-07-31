@@ -196,6 +196,38 @@ function relate(a, b) {
 }
 
 /**
+ * Increment / Decrement `path` if `target` is before
+ *
+ * @param {List} path
+ * @param {List} target
+ * @param {Boolean} inserted - whether target was inserted or removed
+ * @return {List} path or updated path
+ */
+
+function updatePathOnTargetChange(path, target, inserted = true) {
+  if (!target || !path) {
+    return path
+  }
+
+  let i
+  const n = inserted ? 1 : -1
+
+  for (i = 0; i < path.size && i < target.size; i++) {
+    const pv = path.get(i)
+    const tv = target.get(i)
+
+    // If target comes after, break
+    if (pv < tv) return path
+
+    // Target comes in before, set newPath
+    if (pv > tv) return increment(path, n, i)
+  }
+
+  // Path and target are the same up to the size of one of them, increment
+  return increment(path, n, i - 1)
+}
+
+/**
  * Export.
  *
  * @type {Object}
@@ -214,4 +246,5 @@ export default {
   max,
   min,
   relate,
+  updatePathOnTargetChange,
 }

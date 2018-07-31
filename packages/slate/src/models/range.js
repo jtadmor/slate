@@ -556,10 +556,11 @@ class Range extends Record(DEFAULTS) {
    *
    * @param {String|List} key or path
    * @param {Number} offset
+   * @param {String|List} newArg - new key or path, if known
    * @return {Range}
    */
 
-  moveAnchorTo(key, offset) {
+  moveAnchorTo(key, offset, newArg = null) {
     const {
       anchorKey,
       focusKey,
@@ -574,7 +575,8 @@ class Range extends Record(DEFAULTS) {
       const isFocus = key === focusKey
       return this.merge({
         anchorKey: key,
-        anchorPath: isFocus ? focusPath : isAnchor ? anchorPath : null,
+        anchorPath:
+          newArg || (isFocus ? focusPath : isAnchor ? anchorPath : null),
         anchorOffset: offset,
         isBackward: isFocus
           ? offset > focusOffset
@@ -586,7 +588,7 @@ class Range extends Record(DEFAULTS) {
       const isFocus = path && path.equals(focusPath)
       return this.merge({
         anchorPath: path,
-        anchorKey: isAnchor ? anchorKey : isFocus ? focusKey : null,
+        anchorKey: newArg || (isAnchor ? anchorKey : isFocus ? focusKey : null),
         anchorOffset: offset,
         isBackward: isFocus
           ? offset > focusOffset
@@ -600,10 +602,11 @@ class Range extends Record(DEFAULTS) {
    *
    * @param {String|List} key or path
    * @param {Number} offset
+   * @param {String|List} newArg - new key or path, if known
    * @return {Range}
    */
 
-  moveFocusTo(key, offset) {
+  moveFocusTo(key, offset, newArg) {
     const {
       focusKey,
       anchorKey,
@@ -618,7 +621,8 @@ class Range extends Record(DEFAULTS) {
       const isFocus = key === focusKey
       return this.merge({
         focusKey: key,
-        focusPath: isAnchor ? anchorPath : isFocus ? focusPath : null,
+        focusPath:
+          newArg || (isAnchor ? anchorPath : isFocus ? focusPath : null),
         focusOffset: offset,
         isBackward: isAnchor
           ? offset < anchorOffset
@@ -630,7 +634,7 @@ class Range extends Record(DEFAULTS) {
       const isFocus = path && path.equals(focusPath)
       return this.merge({
         focusPath: path,
-        focusKey: isFocus ? focusKey : isAnchor ? anchorKey : null,
+        focusKey: newArg || (isFocus ? focusKey : isAnchor ? anchorKey : null),
         focusOffset: offset,
         isBackward: isAnchor
           ? offset < anchorOffset
