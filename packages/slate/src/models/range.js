@@ -560,7 +560,7 @@ class Range extends Record(DEFAULTS) {
    * @return {Range}
    */
 
-  moveAnchorTo(key, offset, newArg = null) {
+  moveAnchorTo(key, offset, newArg) {
     const {
       anchorKey,
       focusKey,
@@ -696,7 +696,7 @@ class Range extends Record(DEFAULTS) {
    */
 
   moveToAnchor() {
-    return this.moveFocusTo(this.anchorKey, this.anchorOffset)
+    return this.moveFocusTo(this.anchorKey, this.anchorOffset, this.anchorPath)
   }
 
   /**
@@ -706,7 +706,7 @@ class Range extends Record(DEFAULTS) {
    */
 
   moveToFocus() {
-    return this.moveAnchorTo(this.focusKey, this.focusOffset)
+    return this.moveAnchorTo(this.focusKey, this.focusOffset, this.focusPath)
   }
 
   /**
@@ -718,7 +718,7 @@ class Range extends Record(DEFAULTS) {
 
   moveAnchorToStartOf(node) {
     node = getFirstText(node)
-    return this.moveAnchorTo(node.key, 0)
+    return this.moveAnchorTo(node.key, 0, undefined)
   }
 
   /**
@@ -730,7 +730,7 @@ class Range extends Record(DEFAULTS) {
 
   moveAnchorToEndOf(node) {
     node = getLastText(node)
-    return this.moveAnchorTo(node.key, node.text.length)
+    return this.moveAnchorTo(node.key, node.text.length, undefined)
   }
 
   /**
@@ -742,7 +742,7 @@ class Range extends Record(DEFAULTS) {
 
   moveFocusToStartOf(node) {
     node = getFirstText(node)
-    return this.moveFocusTo(node.key, 0)
+    return this.moveFocusTo(node.key, 0, undefined)
   }
 
   /**
@@ -754,7 +754,7 @@ class Range extends Record(DEFAULTS) {
 
   moveFocusToEndOf(node) {
     node = getLastText(node)
-    return this.moveFocusTo(node.key, node.text.length)
+    return this.moveFocusTo(node.key, node.text.length, undefined)
   }
 
   /**
