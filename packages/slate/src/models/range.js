@@ -816,8 +816,10 @@ class Range extends Record(DEFAULTS) {
     }
 
     // Get the anchor and focus nodes.
-    let anchorNode = node.getNode(anchorKey || anchorPath)
-    let focusNode = node.getNode(focusKey || focusPath)
+    // let anchorNode = node.getNode(anchorKey || anchorPath)
+    // let focusNode = node.getNode(focusKey || focusPath)
+    let anchorNode = node.refindNode(anchorPath, anchorKey)
+    let focusNode = node.refindNode(focusPath, focusKey)
 
     // If the range is malformed, warn and zero it out.
     if (!anchorNode || !focusNode) {

@@ -137,6 +137,7 @@ function invertOperation(op) {
       const inverse = op
         .set('selection', inverseSelection)
         .set('properties', inverseProps)
+
       return inverse
     }
 
