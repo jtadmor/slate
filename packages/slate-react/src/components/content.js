@@ -440,9 +440,17 @@ class Content extends React.Component {
     const childrenDecorations = getChildrenDecorations(document, decs)
 
     const children = document.nodes.toArray().map((child, i) => {
-      const isSelected = !!indexes && indexes.start <= i && i < indexes.end
+      const containedInSelection =
+        !!indexes && indexes.start < i && i < indexes.end - 1
+      const onEdgeOfSelection =
+        !!indexes && (i === indexes.start || i === indexes.end - 1)
 
-      return this.renderNode(child, isSelected, childrenDecorations[i])
+      return this.renderNode(
+        child,
+        { onEdgeOfSelection, containedInSelection },
+        childrenDecorations[i],
+        i
+      )
     })
 
     const style = {
@@ -495,11 +503,17 @@ class Content extends React.Component {
    * @return {Element}
    */
 
-  renderNode = (child, isSelected, decorations) => {
+  renderNode = (
+    child,
+    { onEdgeOfSelection, containedInSelection },
+    decorations,
+    index
+  ) => {
     const { editor, readOnly } = this.props
     const { value } = editor
     const { document, selection } = value
     const { isFocused } = selection
+    const isSelected = onEdgeOfSelection || containedInSelection
 
     return (
       <Node
@@ -507,6 +521,9 @@ class Content extends React.Component {
         editor={editor}
         decorations={decorations}
         isSelected={isSelected}
+        onEdgeOfSelection={onEdgeOfSelection}
+        containedInSelection={containedInSelection}
+        path={onEdgeOfSelection && [index]}
         isFocused={isFocused && isSelected}
         key={child.key}
         node={child}
