@@ -97,11 +97,11 @@ function CorePlugin(options = {}) {
       {
         match: [{ object: 'block' }, { object: 'inline' }],
         nodes: [{ min: 1 }],
-        normalize: (editor, error) => {
+        normalize: (editor, error, path) => {
           const { code, node } = error
 
           if (code === 'child_min_invalid' && node.nodes.isEmpty()) {
-            editor.insertNodeByKey(node.key, 0, Text.create())
+            editor.insertNodeByPath(path, 0, Text.create())
           }
         },
       },
@@ -111,7 +111,7 @@ function CorePlugin(options = {}) {
         match: { object: 'block' },
         first: [{ object: 'block' }, { object: 'text' }],
         last: [{ object: 'block' }, { object: 'text' }],
-        normalize: (editor, error) => {
+        normalize: (editor, error, path) => {
           const { code, node } = error
           const text = Text.create()
           let i
@@ -124,16 +124,16 @@ function CorePlugin(options = {}) {
             return
           }
 
-          editor.insertNodeByKey(node.key, i, text)
+          editor.insertNodeByPath(path, i, text)
         },
       },
       {
         match: { object: 'inline' },
-        first: [{ object: 'block' }, { object: 'text' }],
-        last: [{ object: 'block' }, { object: 'text' }],
-        previous: [{ object: 'block' }, { object: 'text' }],
-        next: [{ object: 'block' }, { object: 'text' }],
-        normalize: (editor, error) => {
+        first: [{ object: 'text' }, { object: 'block' }],
+        last: [{ object: 'text' }, { object: 'block' }],
+        previous: [{ object: 'text' }, { object: 'block' }],
+        next: [{ object: 'text' }, { object: 'block' }],
+        normalize: (editor, error, path) => {
           const { code, node, index } = error
           const text = Text.create()
           let i
@@ -150,19 +150,19 @@ function CorePlugin(options = {}) {
             return
           }
 
-          editor.insertNodeByKey(node.key, i, text)
+          editor.insertNodeByPath(path, i, text)
         },
       },
 
       // Merge adjacent text nodes.
       {
         match: { object: 'text' },
-        next: [{ object: 'block' }, { object: 'inline' }],
-        normalize: (editor, error) => {
-          const { code, next } = error
+        previous: [{ object: 'inline' }],
+        normalize: (editor, error, path) => {
+          const { code, index } = error
 
-          if (code === 'next_sibling_object_invalid') {
-            editor.mergeNodeByKey(next.key)
+          if (code === 'previous_sibling_object_invalid') {
+            editor.mergeNodeByPath(path.concat(index))
           }
         },
       },

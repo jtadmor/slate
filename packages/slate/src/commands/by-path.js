@@ -187,7 +187,7 @@ Commands.mergeNodeByPath = (editor, path) => {
  *
  * @param {Editor} editor
  * @param {Array} path
- * @param {String} newParentPath
+ * @param {Array} newParentPath
  * @param {Number} newIndex
  */
 

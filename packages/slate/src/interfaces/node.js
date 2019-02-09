@@ -170,7 +170,7 @@ class NodeInterface {
   }
 
   /**
-   * Normalize the text node with an `editor`.
+   * Normalize the node with an `editor`.
    *
    * @param {Editor} editor
    * @return {Function|Void}

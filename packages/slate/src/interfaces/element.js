@@ -1645,7 +1645,7 @@ class ElementInterface {
     if (!path.size) return null
     if (path.last() === 0) return null
     const p = PathUtils.decrement(path)
-    const sibling = this.getNode(p)
+    const sibling = this.getNodeByPath(p)
     return sibling
   }
 

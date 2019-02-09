@@ -96,19 +96,26 @@ function SchemaPlugin(schema) {
     const error = validateNode(node, editor, () => {})
     if (!error) return next()
 
-    return () => {
+    return (c, path) => {
       const { rule } = error
       const { size } = editor.operations
 
+      const { document: documentNode } = editor.value
+      const nodeAtPath = documentNode.getNodeByPath(path)
+
+      if (!nodeAtPath || nodeAtPath.key !== node.key) {
+        path = documentNode.getPath(node.key)
+      }
+
       // First run the user-provided `normalize` function if one exists...
       if (rule.normalize) {
-        rule.normalize(editor, error)
+        rule.normalize(editor, error, path)
       }
 
       // If the `normalize` function did not add any operations to the editor
       // object, it can't have normalized, so run the default one.
       if (editor.operations.size === size) {
-        defaultNormalize(editor, error)
+        defaultNormalize(editor, error, path)
       }
     }
   }
@@ -156,7 +163,7 @@ function SchemaPlugin(schema) {
  * @param {SlateError} error
  */
 
-function defaultNormalize(editor, error) {
+function defaultNormalize(editor, error, path) {
   const { code, node, child, next, previous, key, mark } = error
 
   switch (code) {
@@ -548,7 +555,6 @@ function validatePrevious(node, child, previous, index, rules) {
   for (const rule of rules) {
     if (rule.previous == null) continue
     if (!testRules(child, rule.match)) continue
-
     const error = validateRules(previous, rule.previous)
     if (!error) continue
 
