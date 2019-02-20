@@ -1,6 +1,6 @@
 import assert from 'assert'
 import { fixtures } from 'slate-dev-test-utils'
-import { Node, Editor, Value } from 'slate'
+import { Node, Editor, Value, PathUtils, TreeUtils } from 'slate'
 
 const plugins = [
   {
@@ -161,8 +161,19 @@ describe('slate', () => {
     assert.deepEqual(actual, expected)
   })
 
-  fixtures(__dirname, 'utils/path-utils', ({ module }) => {
+  fixtures(__dirname, 'utils/path-utils/transform', ({ module }) => {
     const fn = module.default
     fn()
+  })
+
+  fixtures(__dirname, 'utils/tree-utils/get-unique-paths-with-ancestors', ({ module }) => {
+    const { input, output: expected } = module
+
+    const paths = input.map(PathUtils.create)
+
+    const result = TreeUtils.getUniquePathsWithAncestors(paths)
+      .map(path => path.toArray())
+
+    assert.deepEqual(result, expected)
   })
 })

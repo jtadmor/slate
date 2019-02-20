@@ -8,6 +8,7 @@ import CommandsPlugin from '../plugins/commands'
 import CorePlugin from '../plugins/core'
 import Operation from '../models/operation'
 import PathUtils from '../utils/path-utils'
+import TreeUtils from '../utils/tree-utils'
 import QueriesPlugin from '../plugins/queries'
 import SchemaPlugin from '../plugins/schema'
 import Value from '../models/value'
@@ -51,7 +52,17 @@ class Editor {
     this.value = null
 
     this.tmp = {
-      dirty: [],
+      // dirty: [],
+      lastTree: undefined,
+      lastDirty: [],
+      get dirty() {
+        if (this.dirtyTree !== lastTree) {
+          this.lastDirty = TreeUtils.getPathArray(this.dirtyTree)
+        }
+
+        return this.lastDirty
+      },
+      dirtyTree: undefined,
       flushing: false,
       merge: null,
       normalize: true,
@@ -99,15 +110,22 @@ class Editor {
     this.operations = operations.push(operation)
 
     // Get the paths of the affected nodes, and mark them as dirty.
-    const newDirtyPaths = getDirtyPaths(operation)
-    const dirty = this.tmp.dirty.reduce((memo, path) => {
-      path = PathUtils.create(path)
-      const transformed = PathUtils.transform(path, operation)
-      memo = memo.concat(transformed.toArray())
-      return memo
-    }, newDirtyPaths)
+    // const newDirtyPaths = getDirtyPaths(operation)
+    // const dirty = this.tmp.dirty.reduce((memo, path) => {
+    //   path = PathUtils.create(path)
+    //   const transformed = PathUtils.transform(path, operation)
+    //   memo = memo.concat(transformed.toArray())
+    //   return memo
+    // }, newDirtyPaths)
 
-    this.tmp.dirty = dirty
+    if (this.tmp.dirtyTree) {
+      const dirtyTree = TreeUtils.transform(this.tmp.dirtyTree, operation)
+
+      this.tmp.dirtyTree = dirtyTree
+    }
+    
+    const dirtyPaths = getDirtyPaths(operation)
+    this.tmp.dirtyTree = TreeUtils.addPaths(dirtyPaths, this.tmp.dirtyTree)
 
     // If we're not already, queue the flushing process on the next tick.
     if (!this.tmp.flushing) {
@@ -197,7 +215,7 @@ class Editor {
     let { document } = value
     const table = document.getKeysToPathsTable()
     const paths = Object.values(table).map(PathUtils.create)
-    this.tmp.dirty = this.tmp.dirty.concat(paths)
+    this.tmp.dirtyTree = TreeUtils.createFromPaths(paths)
     normalizeDirtyPaths(this)
 
     const { selection } = value
@@ -563,15 +581,33 @@ function normalizeDirtyPaths(editor) {
     return
   }
 
-  if (!editor.tmp.dirty.length) {
+  if (!editor.tmp.dirtyTree) {
     return
   }
 
   editor.withoutNormalizing(() => {
-    while (editor.tmp.dirty.length) {
-      const path = editor.tmp.dirty.pop()
-      normalizeNodeByPath(editor, path)
+    // Normalize the doc
+    normalizeNodeByPath(editor, PathUtils.create([]))
+
+    // while (dirty.length) {
+    //   const dirtyPath = dirty.pop()
+    //   normalizeNodeByPath(editor, dirtyPath)
+    // }
+
+    let dirtyPath = TreeUtils.getNextPathToNormalize(editor.tmp.dirtyTree)
+
+    while (dirtyPath) {
+      // console.log('dirtyPath?', dirtyPath)
+      // console.log(editor.tmp.dirtyTree.toJS())
+      // console.log()
+      editor.tmp.dirtyTree = editor.tmp.dirtyTree.mergeIn(dirtyPath, { normalized: true })
+
+      normalizeNodeByPath(editor, dirtyPath)
+
+      dirtyPath = TreeUtils.getNextPathToNormalize(editor.tmp.dirtyTree)
     }
+
+    editor.tmp.dirtyTree = undefined
   })
 }
 
