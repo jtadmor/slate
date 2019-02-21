@@ -39,32 +39,9 @@ function getPathArray(tree = Map()) {
 
   const arr = walker(tree)
 
+  arr.push(PathUtils.create([]))
+
   return arr
-}
-
-
-function getNextPathToNormalize(tree = Map(), parentPath = []) {
-  if (!tree.size) {
-    return null
-  }
-
-  const key = tree.findLastKey((v, k) => k !== 'normalized' && !v.get('normalized'))
-
-  if (key) {
-    return PathUtils.create(parentPath.concat(key))
-  }
-
-  let ret
-  
-  tree.findLastKey((v, k) => {
-    if (k !== 'normalized' && v.size) {
-      ret = getNextPathToNormalize(v, parentPath.concat(k))
-      return ret
-    }
-  })
-  
-  // return ret ? PathUtils.create(parentPath.concat(key)) : null
-  return ret || null
 }
 
 
@@ -78,10 +55,6 @@ function forEachEqualOrGreaterPath(tree = Map(), fn, targetPath = PathUtils.crea
     const lt = fromRight ? localTree.sort().reverse() : localTree.sort()
 
     lt.forEach((subTree, key) => {
-      if (key === 'normalized') {
-        return
-      }
-
       if (key >= start_at) {
         const fullPath = parentPath.concat(key)
 
@@ -258,7 +231,6 @@ function getUniquePathsWithAncestors(paths) {
 export default {
   addPaths,
   createFromPaths,
-  getNextPathToNormalize,
   transform,
   getPathArray,
   getUniquePathsWithAncestors,

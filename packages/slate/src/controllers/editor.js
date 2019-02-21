@@ -116,11 +116,12 @@ class Editor {
     // If so, lets create a more efficient storage for them
     if (this.tmp.dirty.length) {
       const dirtyTree = this.tmp.dirtyTree || TreeUtils.createFromPaths(this.tmp.dirty)
-      const transformedTree = TreeUtils.transform(this.tmp.dirtyTree, operation)
+      const transformedTree = TreeUtils.transform(dirtyTree, operation)
       this.tmp.dirtyTree = TreeUtils.addPaths(dirtyPaths, transformedTree)
       this.tmp.dirty = TreeUtils.getPathArray(this.tmp.dirtyTree)
     } else {
       this.tmp.dirty = dirtyPaths
+      this.tmp.dirtyTree = undefined
     }
     
     // If we're not already, queue the flushing process on the next tick.
@@ -211,7 +212,7 @@ class Editor {
     let { document } = value
     const table = document.getKeysToPathsTable()
     const paths = Object.values(table).map(PathUtils.create)
-    this.tmp.dirtyTree = TreeUtils.createFromPaths(paths)
+    this.tmp.dirty = this.tmp.dirty.concat(paths)
     normalizeDirtyPaths(this)
 
     const { selection } = value
@@ -585,10 +586,9 @@ function normalizeDirtyPaths(editor) {
 
   editor.withoutNormalizing(() => {
     while (editor.tmp.dirty.length) {
-      const dirtyPath = editor.tmp.dirty.pop()
-      normalizeNodeByPath(editor, dirtyPath)
+      const path = editor.tmp.dirty.pop()
+      normalizeNodeByPath(editor, path)
     }
-
   })
 }
 
