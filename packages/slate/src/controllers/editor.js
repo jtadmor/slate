@@ -52,16 +52,7 @@ class Editor {
     this.value = null
 
     this.tmp = {
-      // dirty: [],
-      lastTree: undefined,
-      lastDirty: [],
-      get dirty() {
-        if (this.dirtyTree !== lastTree) {
-          this.lastDirty = TreeUtils.getPathArray(this.dirtyTree)
-        }
-
-        return this.lastDirty
-      },
+      dirty: [],
       dirtyTree: undefined,
       flushing: false,
       merge: null,
@@ -118,15 +109,20 @@ class Editor {
     //   return memo
     // }, newDirtyPaths)
 
-    if (this.tmp.dirtyTree) {
-      const dirtyTree = TreeUtils.transform(this.tmp.dirtyTree, operation)
+    // Get the paths of the affected nodes
+    const dirtyPaths = getDirtyPaths(operation)
 
-      this.tmp.dirtyTree = dirtyTree
+    // Check if we already have some dirty paths
+    // If so, lets create a more efficient storage for them
+    if (this.tmp.dirty.length) {
+      const dirtyTree = this.tmp.dirtyTree || TreeUtils.createFromPaths(this.tmp.dirty)
+      const transformedTree = TreeUtils.transform(this.tmp.dirtyTree, operation)
+      this.tmp.dirtyTree = TreeUtils.addPaths(dirtyPaths, transformedTree)
+      this.tmp.dirty = TreeUtils.getPathArray(this.tmp.dirtyTree)
+    } else {
+      this.tmp.dirty = dirtyPaths
     }
     
-    const dirtyPaths = getDirtyPaths(operation)
-    this.tmp.dirtyTree = TreeUtils.addPaths(dirtyPaths, this.tmp.dirtyTree)
-
     // If we're not already, queue the flushing process on the next tick.
     if (!this.tmp.flushing) {
       this.tmp.flushing = true
@@ -581,33 +577,18 @@ function normalizeDirtyPaths(editor) {
     return
   }
 
-  if (!editor.tmp.dirtyTree) {
+  if (!editor.tmp.dirty.length) {
     return
   }
 
+  editor.tmp.dirtyTree = undefined
+
   editor.withoutNormalizing(() => {
-    // Normalize the doc
-    normalizeNodeByPath(editor, PathUtils.create([]))
-
-    // while (dirty.length) {
-    //   const dirtyPath = dirty.pop()
-    //   normalizeNodeByPath(editor, dirtyPath)
-    // }
-
-    let dirtyPath = TreeUtils.getNextPathToNormalize(editor.tmp.dirtyTree)
-
-    while (dirtyPath) {
-      // console.log('dirtyPath?', dirtyPath)
-      // console.log(editor.tmp.dirtyTree.toJS())
-      // console.log()
-      editor.tmp.dirtyTree = editor.tmp.dirtyTree.mergeIn(dirtyPath, { normalized: true })
-
+    while (editor.tmp.dirty.length) {
+      const dirtyPath = editor.tmp.dirty.pop()
       normalizeNodeByPath(editor, dirtyPath)
-
-      dirtyPath = TreeUtils.getNextPathToNormalize(editor.tmp.dirtyTree)
     }
 
-    editor.tmp.dirtyTree = undefined
   })
 }
 
