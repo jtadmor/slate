@@ -100,7 +100,7 @@ class Editor {
     this.value = operation.apply(value)
     this.operations = operations.push(operation)
 
-    if (this.tmp.dirtyTree) {
+    if (true) {
       // Get the paths of the affected nodes
       const dirtyLeaves = getDirtyLeaves(operation)
 
@@ -214,7 +214,8 @@ class Editor {
     let { document } = value
     const table = document.getKeysToPathsTable()
     const paths = Object.values(table).map(PathUtils.create)
-    this.tmp.dirty = paths
+    this.tmp.dirtyTree = TreeUtils.createFromPaths(paths)
+    // this.tmp.dirty = paths
     normalizeDirtyPaths(this)
 
     const { selection } = value
@@ -646,16 +647,9 @@ function normalizeDirtyPaths(editor) {
     })
   } else if (editor.tmp.dirty.length) {
     editor.withoutNormalizing(() => {
-      let len
-
       while (editor.tmp.dirty.length) {
-        len = editor.tmp.dirty.length
         const path = editor.tmp.dirty.pop()
         normalizeNodeByPath(editor, path)
-
-        if (len <= editor.tmp.dirty.length) {
-          editor.switchToTree()
-        }
       }
     })
   }

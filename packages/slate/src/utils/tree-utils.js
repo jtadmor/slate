@@ -1,4 +1,4 @@
-import { Map, List } from 'immutable'
+import { Map } from 'immutable'
 import PathUtils from './path-utils'
 
 function addPaths(tree = Map(), paths) {
@@ -50,32 +50,49 @@ function forEachEqualOrGreaterPath(
   fromRight = false
 ) {
   function walker(localTree, parentPath = PathUtils.create([])) {
+    if (!localTree.size) {
+      return
+    }
+
     const continuation_arr = []
+
+    function checkKey(key) {
+      const fullPath = parentPath.concat(key)
+
+      let ret
+
+      if (
+        targetPath.size <= fullPath.size &&
+        (PathUtils.isYounger(targetPath, fullPath) ||
+          PathUtils.isAbove(targetPath, fullPath) ||
+          PathUtils.isEqual(targetPath, fullPath))
+      ) {
+        const subTree = localTree.get(key)
+        ret = fn(subTree, fullPath)
+      }
+
+      if (ret !== false) {
+        continuation_arr.push(fullPath)
+      }
+    }
 
     const index = parentPath.size
     const start_at = targetPath.get(index, 0)
 
-    const lt = fromRight ? localTree.sort().reverse() : localTree.sort()
-
-    lt.forEach((subTree, key) => {
-      if (key >= start_at) {
-        const fullPath = parentPath.concat(key)
-
-        let ret
-
-        if (
-          PathUtils.isYounger(targetPath, fullPath) ||
-          PathUtils.isAbove(targetPath, fullPath) ||
-          PathUtils.isEqual(targetPath, fullPath)
-        ) {
-          ret = fn(subTree, fullPath)
-        }
-
-        if (ret !== false) {
-          continuation_arr.push(fullPath)
-        }
-      }
-    })
+    if (fromRight) {
+      localTree
+        .keySeq()
+        .sort()
+        .reverse()
+        .takeWhile(key => key >= start_at)
+        .forEach(checkKey)
+    } else {
+      localTree
+        .keySeq()
+        .sort()
+        .skipUntil(key => key >= start_at)
+        .forEach(checkKey)
+    }
 
     continuation_arr.forEach(path => {
       walker(tree.getIn(path), path)
@@ -94,9 +111,13 @@ const TREE_CHANGING_OP_TYPES = [
 ]
 
 function transform(tree = Map(), operation) {
-  const { type, position, path, newPath } = operation
+  const { type, position, path } = operation
 
   if (TREE_CHANGING_OP_TYPES.indexOf(type) === -1) {
+    return tree
+  }
+
+  if (!tree.size) {
     return tree
   }
 
@@ -151,6 +172,7 @@ function transform(tree = Map(), operation) {
         tree,
         (localTree, localPath) => {
           if (PathUtils.isEqual(localPath, path)) {
+            console.log('merge op', localPath, path)
             transformed.deleteIn(localPath)
             // We want to iterate the children of the node that gets merged, so return true
             return true
@@ -212,6 +234,7 @@ function transform(tree = Map(), operation) {
 
       // We should have had some children nodes moved which would create this, but do a sanity check
       const newNodePath = PathUtils.increment(path)
+
       if (!transformed.getIn(newNodePath)) {
         transformed.setIn(newNodePath, Map())
       }
