@@ -1,7 +1,7 @@
 import { Map, List } from 'immutable'
 import PathUtils from './path-utils'
 
-function addPaths(paths, tree = Map()) {
+function addPaths(tree = Map(), paths) {
   if (!paths) {
     return tree
   }
@@ -16,7 +16,7 @@ function addPaths(paths, tree = Map()) {
 }
 
 function createFromPaths(paths) {
-  const tree = addPaths(paths)
+  const tree = addPaths(Map(), paths)
 
   return tree
 }
@@ -228,11 +228,27 @@ function getUniquePathsWithAncestors(paths) {
   return arr
 }
 
+
+function getLeafPath(tree = Map()) {
+  let currentTree = tree
+  const path = []
+
+  while (currentTree.size) {
+    const pathPart = currentTree.keySeq().last()
+    currentTree = currentTree.get(pathPart)
+    path.push(pathPart)
+  }
+
+  return PathUtils.create(path)
+}
+
+
 export default {
   addPaths,
   createFromPaths,
   transform,
   getPathArray,
   getUniquePathsWithAncestors,
+  getLeafPath,
 }
 

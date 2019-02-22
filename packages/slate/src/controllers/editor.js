@@ -100,29 +100,14 @@ class Editor {
     this.value = operation.apply(value)
     this.operations = operations.push(operation)
 
-    // Get the paths of the affected nodes, and mark them as dirty.
-    // const newDirtyPaths = getDirtyPaths(operation)
-    // const dirty = this.tmp.dirty.reduce((memo, path) => {
-    //   path = PathUtils.create(path)
-    //   const transformed = PathUtils.transform(path, operation)
-    //   memo = memo.concat(transformed.toArray())
-    //   return memo
-    // }, newDirtyPaths)
-
     // Get the paths of the affected nodes
-    const dirtyPaths = getDirtyPaths(operation)
+    const dirtyLeaves = getDirtyLeaves(operation)
 
+    console.log('operation', operation.toJSON())
     // Check if we already have some dirty paths
     // If so, lets create a more efficient storage for them
-    if (this.tmp.dirty.length) {
-      const dirtyTree = this.tmp.dirtyTree || TreeUtils.createFromPaths(this.tmp.dirty)
-      const transformedTree = TreeUtils.transform(dirtyTree, operation)
-      this.tmp.dirtyTree = TreeUtils.addPaths(dirtyPaths, transformedTree)
-      this.tmp.dirty = TreeUtils.getPathArray(this.tmp.dirtyTree)
-    } else {
-      this.tmp.dirty = dirtyPaths
-      this.tmp.dirtyTree = undefined
-    }
+    const transformedTree = TreeUtils.transform(this.tmp.dirtyTree, operation)
+    this.tmp.dirtyTree = TreeUtils.addPaths(transformedTree, dirtyLeaves)
     
     // If we're not already, queue the flushing process on the next tick.
     if (!this.tmp.flushing) {
@@ -212,7 +197,7 @@ class Editor {
     let { document } = value
     const table = document.getKeysToPathsTable()
     const paths = Object.values(table).map(PathUtils.create)
-    this.tmp.dirty = this.tmp.dirty.concat(paths)
+    this.tmp.dirtyTree = TreeUtils.createFromPaths(paths)
     normalizeDirtyPaths(this)
 
     const { selection } = value
@@ -222,6 +207,7 @@ class Editor {
       controller.moveToStartOfDocument()
     }
 
+    console.log('after', this.value.document.nodes.first().nodes.map(n => ({ text: n.text, type: n.type })).toArray())
     return controller
   }
 
@@ -567,6 +553,58 @@ function getDirtyPaths(operation) {
   }
 }
 
+
+function getDirtyLeaves(operation) {
+  const { type, node, path, newPath } = operation
+
+  switch (type) {
+    case 'add_mark':
+    case 'insert_text':
+    case 'remove_mark':
+    case 'remove_text':
+    case 'set_mark':
+    case 'set_node': {
+      return [path]
+    }
+
+    case 'insert_node': {
+      const table = node.getKeysToPathsTable()
+      const paths = Object.values(table).map(p => path.concat(p))
+      return paths
+    }
+
+    case 'split_node': {
+      const nextPath = PathUtils.increment(path)
+      return [path, nextPath]
+    }
+
+    case 'merge_node': {
+      const previousPath = PathUtils.decrement(path)
+      return [previousPath]
+    }
+
+    case 'move_node': {
+      if (PathUtils.isEqual(path, newPath)) {
+        return []
+      }
+
+      return [
+        PathUtils.transform(PathUtils.lift(path), operation).first(),
+        PathUtils.transform(PathUtils.lift(newPath), operation).first(),
+      ]
+    }
+
+    case 'remove_node': {
+      const parent = PathUtils.lift(path)
+      return [parent]
+    }
+
+    default: {
+      return []
+    }
+  }
+}
+
 /**
  * Normalize any new "dirty" paths that have been added to the change.
  *
@@ -578,16 +616,22 @@ function normalizeDirtyPaths(editor) {
     return
   }
 
-  if (!editor.tmp.dirty.length) {
+  if (!editor.tmp.dirtyTree) {
     return
   }
 
-  editor.tmp.dirtyTree = undefined
-
   editor.withoutNormalizing(() => {
-    while (editor.tmp.dirty.length) {
-      const path = editor.tmp.dirty.pop()
+    while (editor.tmp.dirtyTree.size) {
+      const path = TreeUtils.getLeafPath(editor.tmp.dirtyTree)
       normalizeNodeByPath(editor, path)
+      editor.tmp.dirtyTree = editor.tmp.dirtyTree.deleteIn(path)
+    }
+
+    // Normalize the doc
+    normalizeNodeByPath(editor, PathUtils.create([]))
+
+    if (!editor.tmp.dirtyTree.size) {
+      editor.tmp.dirtyTree = undefined
     }
   })
 }

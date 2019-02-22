@@ -2100,10 +2100,12 @@ class ElementInterface {
         ? a.mergeText(b)
         : a.set('nodes', a.nodes.concat(b.nodes))
 
+    console.log('merging', withPath)
     let ret = this
     ret = ret.removeNode(path)
     ret = ret.removeNode(withPath)
     ret = ret.insertNode(withPath, newNode)
+    console.log('done', newNode.toJSON())
     return ret
   }
 
