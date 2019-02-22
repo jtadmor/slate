@@ -118,8 +118,8 @@ class Value extends Record(DEFAULTS) {
 
   get startBlock() {
     return (
-      this.selection.start.key &&
-      this.document.getClosestBlock(this.selection.start.key)
+      this.selection.start.path &&
+      this.document.getClosestBlock(this.selection.start.path)
     )
   }
 
@@ -131,8 +131,8 @@ class Value extends Record(DEFAULTS) {
 
   get endBlock() {
     return (
-      this.selection.end.key &&
-      this.document.getClosestBlock(this.selection.end.key)
+      this.selection.end.path &&
+      this.document.getClosestBlock(this.selection.end.path)
     )
   }
 
@@ -144,8 +144,8 @@ class Value extends Record(DEFAULTS) {
 
   get anchorBlock() {
     return (
-      this.selection.anchor.key &&
-      this.document.getClosestBlock(this.selection.anchor.key)
+      this.selection.anchor.path &&
+      this.document.getClosestBlock(this.selection.anchor.path)
     )
   }
 
@@ -157,8 +157,8 @@ class Value extends Record(DEFAULTS) {
 
   get focusBlock() {
     return (
-      this.selection.focus.key &&
-      this.document.getClosestBlock(this.selection.focus.key)
+      this.selection.focus.path &&
+      this.document.getClosestBlock(this.selection.focus.path)
     )
   }
 
@@ -170,8 +170,8 @@ class Value extends Record(DEFAULTS) {
 
   get startInline() {
     return (
-      this.selection.start.key &&
-      this.document.getClosestInline(this.selection.start.key)
+      this.selection.start.path &&
+      this.document.getClosestInline(this.selection.start.path)
     )
   }
 
@@ -183,8 +183,8 @@ class Value extends Record(DEFAULTS) {
 
   get endInline() {
     return (
-      this.selection.end.key &&
-      this.document.getClosestInline(this.selection.end.key)
+      this.selection.end.path &&
+      this.document.getClosestInline(this.selection.end.path)
     )
   }
 
@@ -196,8 +196,8 @@ class Value extends Record(DEFAULTS) {
 
   get anchorInline() {
     return (
-      this.selection.anchor.key &&
-      this.document.getClosestInline(this.selection.anchor.key)
+      this.selection.anchor.path &&
+      this.document.getClosestInline(this.selection.anchor.path)
     )
   }
 
@@ -209,8 +209,8 @@ class Value extends Record(DEFAULTS) {
 
   get focusInline() {
     return (
-      this.selection.focus.key &&
-      this.document.getClosestInline(this.selection.focus.key)
+      this.selection.focus.path &&
+      this.document.getClosestInline(this.selection.focus.path)
     )
   }
 
@@ -222,8 +222,8 @@ class Value extends Record(DEFAULTS) {
 
   get startText() {
     return (
-      this.selection.start.key &&
-      this.document.getDescendant(this.selection.start.key)
+      this.selection.start.path &&
+      this.document.getDescendant(this.selection.start.path)
     )
   }
 
@@ -235,8 +235,8 @@ class Value extends Record(DEFAULTS) {
 
   get endText() {
     return (
-      this.selection.end.key &&
-      this.document.getDescendant(this.selection.end.key)
+      this.selection.end.path &&
+      this.document.getDescendant(this.selection.end.path)
     )
   }
 
@@ -248,8 +248,8 @@ class Value extends Record(DEFAULTS) {
 
   get anchorText() {
     return (
-      this.selection.anchor.key &&
-      this.document.getDescendant(this.selection.anchor.key)
+      this.selection.anchor.path &&
+      this.document.getDescendant(this.selection.anchor.path)
     )
   }
 
@@ -261,8 +261,8 @@ class Value extends Record(DEFAULTS) {
 
   get focusText() {
     return (
-      this.selection.focus.key &&
-      this.document.getDescendant(this.selection.focus.key)
+      this.selection.focus.path &&
+      this.document.getDescendant(this.selection.focus.path)
     )
   }
 
@@ -274,8 +274,8 @@ class Value extends Record(DEFAULTS) {
 
   get nextBlock() {
     return (
-      this.selection.end.key &&
-      this.document.getNextBlock(this.selection.end.key)
+      this.selection.end.path &&
+      this.document.getNextBlock(this.selection.end.path)
     )
   }
 
@@ -287,8 +287,8 @@ class Value extends Record(DEFAULTS) {
 
   get previousBlock() {
     return (
-      this.selection.start.key &&
-      this.document.getPreviousBlock(this.selection.start.key)
+      this.selection.start.path &&
+      this.document.getPreviousBlock(this.selection.start.path)
     )
   }
 
@@ -300,8 +300,8 @@ class Value extends Record(DEFAULTS) {
 
   get nextInline() {
     return (
-      this.selection.end.key &&
-      this.document.getNextInline(this.selection.end.key)
+      this.selection.end.path &&
+      this.document.getNextInline(this.selection.end.path)
     )
   }
 
@@ -313,8 +313,8 @@ class Value extends Record(DEFAULTS) {
 
   get previousInline() {
     return (
-      this.selection.start.key &&
-      this.document.getPreviousInline(this.selection.start.key)
+      this.selection.start.path &&
+      this.document.getPreviousInline(this.selection.start.path)
     )
   }
 
@@ -326,8 +326,8 @@ class Value extends Record(DEFAULTS) {
 
   get nextText() {
     return (
-      this.selection.end.key &&
-      this.document.getNextText(this.selection.end.key)
+      this.selection.end.path &&
+      this.document.getNextText(this.selection.end.path)
     )
   }
 
@@ -339,8 +339,8 @@ class Value extends Record(DEFAULTS) {
 
   get previousText() {
     return (
-      this.selection.start.key &&
-      this.document.getPreviousText(this.selection.start.key)
+      this.selection.start.path &&
+      this.document.getPreviousText(this.selection.start.path)
     )
   }
 

@@ -615,14 +615,14 @@ function normalizeNodeByPath(editor, path) {
     }
 
     // Run the normalize `fn` to fix the node.
-    fn(controller)
+    fn(controller, path)
 
     // Attempt to re-find the node by path, or by key if it has changed
     // locations in the tree continue iterating.
     value = editor.value
     document = value.document
     const { key } = node
-    let found = document.getDescendant(path)
+    let found = document.getDescendantByPath(path)
 
     if (found && found.key === key) {
       node = found

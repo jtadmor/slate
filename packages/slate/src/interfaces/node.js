@@ -112,9 +112,20 @@ class NodeInterface {
 
   getNode(path) {
     path = this.resolvePath(path)
+    return this.getNodeByPath(path)
+  }
+
+  /**
+   * Get a node in the tree, or the node itself, by path.
+   *
+   * @param {List} path
+   * @return {Node|Null}
+   */
+
+  getNodeByPath(path) {
     if (!path) return null
     if (this.object === 'text' && path.size) return null
-    const node = path.size ? this.getDescendant(path) : this
+    const node = path.size ? this.getDescendantByPath(path) : this
     return node
   }
 
@@ -159,7 +170,7 @@ class NodeInterface {
   }
 
   /**
-   * Normalize the text node with an `editor`.
+   * Normalize the node with an `editor`.
    *
    * @param {Editor} editor
    * @return {Function|Void}

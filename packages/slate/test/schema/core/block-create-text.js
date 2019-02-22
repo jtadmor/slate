@@ -8,6 +8,13 @@ export const input = (
   <value>
     <document>
       <paragraph />
+      <paragraph>text</paragraph>
+      <paragraph>
+        <text />
+      </paragraph>
+      <paragraph>
+        <paragraph />
+      </paragraph>
     </document>
   </value>
 )
@@ -17,6 +24,15 @@ export const output = (
     <document>
       <paragraph>
         <text />
+      </paragraph>
+      <paragraph>text</paragraph>
+      <paragraph>
+        <text />
+      </paragraph>
+      <paragraph>
+        <paragraph>
+          <text />
+        </paragraph>
       </paragraph>
     </document>
   </value>
