@@ -1,4 +1,4 @@
-import { List } from 'immutable'
+import { List, OrderedMap } from 'immutable'
 
 /**
  * Compare paths `path` and `target` to see which is before or after.
@@ -370,6 +370,9 @@ function transform(path, operation) {
   const paths = Array.isArray(path) ? path : [path]
   return List(paths)
 }
+
+
+
 
 /**
  * Export.

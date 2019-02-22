@@ -8,6 +8,7 @@ import CommandsPlugin from '../plugins/commands'
 import CorePlugin from '../plugins/core'
 import Operation from '../models/operation'
 import PathUtils from '../utils/path-utils'
+import TreeUtils from '../utils/tree-utils'
 import QueriesPlugin from '../plugins/queries'
 import SchemaPlugin from '../plugins/schema'
 import Value from '../models/value'
@@ -52,6 +53,7 @@ class Editor {
 
     this.tmp = {
       dirty: [],
+      dirtyTree: undefined,
       flushing: false,
       merge: null,
       normalize: true,
@@ -98,17 +100,29 @@ class Editor {
     this.value = operation.apply(value)
     this.operations = operations.push(operation)
 
-    // Get the paths of the affected nodes, and mark them as dirty.
-    const newDirtyPaths = getDirtyPaths(operation)
-    const dirty = this.tmp.dirty.reduce((memo, path) => {
-      path = PathUtils.create(path)
-      const transformed = PathUtils.transform(path, operation)
-      memo = memo.concat(transformed.toArray())
-      return memo
-    }, newDirtyPaths)
 
-    this.tmp.dirty = dirty
+    if (this.tmp.dirtyTree) {
+         // Get the paths of the affected nodes
+      const dirtyLeaves = getDirtyLeaves(operation)
 
+      // Check if we already have some dirty paths
+      // If so, lets create a more efficient storage for them
+      const transformedTree = TreeUtils.transform(this.tmp.dirtyTree, operation)
+      this.tmp.dirtyTree = TreeUtils.addPaths(transformedTree, dirtyLeaves)
+    } else {
+          // Get the paths of the affected nodes, and mark them as dirty.
+      const newDirtyPaths = getDirtyPaths(operation)
+      const dirty = this.tmp.dirty.reduce((memo, path) => {
+        path = PathUtils.create(path)
+        const transformed = PathUtils.transform(path, operation)
+        memo = memo.concat(transformed.toArray())
+        return memo
+      }, newDirtyPaths)
+
+      this.tmp.dirty = dirty
+    }
+   
+    
     // If we're not already, queue the flushing process on the next tick.
     if (!this.tmp.flushing) {
       this.tmp.flushing = true
@@ -116,6 +130,12 @@ class Editor {
     }
 
     return controller
+  }
+
+
+  switchToTree() {
+    this.tmp.dirtyTree = TreeUtils.createFromPaths(this.tmp.dirty)
+    this.tmp.dirty = []
   }
 
   /**
@@ -197,7 +217,7 @@ class Editor {
     let { document } = value
     const table = document.getKeysToPathsTable()
     const paths = Object.values(table).map(PathUtils.create)
-    this.tmp.dirty = this.tmp.dirty.concat(paths)
+    this.tmp.dirty = paths
     normalizeDirtyPaths(this)
 
     const { selection } = value
@@ -552,6 +572,58 @@ function getDirtyPaths(operation) {
   }
 }
 
+
+function getDirtyLeaves(operation) {
+  const { type, node, path, newPath } = operation
+
+  switch (type) {
+    case 'add_mark':
+    case 'insert_text':
+    case 'remove_mark':
+    case 'remove_text':
+    case 'set_mark':
+    case 'set_node': {
+      return [path]
+    }
+
+    case 'insert_node': {
+      const table = node.getKeysToPathsTable()
+      const paths = Object.values(table).map(p => path.concat(p))
+      return paths
+    }
+
+    case 'split_node': {
+      const nextPath = PathUtils.increment(path)
+      return [path, nextPath]
+    }
+
+    case 'merge_node': {
+      const previousPath = PathUtils.decrement(path)
+      return [previousPath]
+    }
+
+    case 'move_node': {
+      if (PathUtils.isEqual(path, newPath)) {
+        return []
+      }
+
+      return [
+        PathUtils.transform(PathUtils.lift(path), operation).first(),
+        PathUtils.transform(PathUtils.lift(newPath), operation).first(),
+      ]
+    }
+
+    case 'remove_node': {
+      const parent = PathUtils.lift(path)
+      return [parent]
+    }
+
+    default: {
+      return []
+    }
+  }
+}
+
 /**
  * Normalize any new "dirty" paths that have been added to the change.
  *
@@ -563,16 +635,33 @@ function normalizeDirtyPaths(editor) {
     return
   }
 
-  if (!editor.tmp.dirty.length) {
-    return
-  }
+  if (editor.tmp.dirtyTree) {
+    editor.withoutNormalizing(() => {
+      while (editor.tmp.dirtyTree.size) {
+        const path = TreeUtils.getLeafPath(editor.tmp.dirtyTree)
+        editor.tmp.dirtyTree = editor.tmp.dirtyTree.deleteIn(path)
+        normalizeNodeByPath(editor, path)
+      }
 
-  editor.withoutNormalizing(() => {
-    while (editor.tmp.dirty.length) {
-      const path = editor.tmp.dirty.pop()
-      normalizeNodeByPath(editor, path)
-    }
-  })
+      // Normalize the doc
+      normalizeNodeByPath(editor, PathUtils.create([]))
+
+      editor.tmp.dirtyTree = undefined
+    })
+  } else if (editor.tmp.dirty.length) {
+    editor.withoutNormalizing(() => {
+      let currentLength
+      while (editor.tmp.dirty.length) {
+        currentLength = editor.tmp.dirty.length
+        const path = editor.tmp.dirty.pop()
+        normalizeNodeByPath(editor, path)
+
+        if (currentLength <= editor.tmp.dirty.length) {
+          editor.switchToTree()
+        }
+      }
+    })
+  }
 }
 
 /**

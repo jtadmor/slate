@@ -17,6 +17,7 @@ import Mark from './models/mark'
 import Node from './models/node'
 import Operation from './models/operation'
 import PathUtils from './utils/path-utils'
+import TreeUtils from './utils/tree-utils'
 import Point from './models/point'
 import Range from './models/range'
 import Selection from './models/selection'
@@ -45,6 +46,7 @@ export {
   Node,
   Operation,
   PathUtils,
+  TreeUtils,
   Point,
   Range,
   resetMemoization,
@@ -69,6 +71,7 @@ export default {
   Node,
   Operation,
   PathUtils,
+  TreeUtils,
   Point,
   Range,
   resetMemoization,
