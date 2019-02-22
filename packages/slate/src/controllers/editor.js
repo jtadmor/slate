@@ -100,9 +100,8 @@ class Editor {
     this.value = operation.apply(value)
     this.operations = operations.push(operation)
 
-
     if (this.tmp.dirtyTree) {
-         // Get the paths of the affected nodes
+      // Get the paths of the affected nodes
       const dirtyLeaves = getDirtyLeaves(operation)
 
       // Check if we already have some dirty paths
@@ -110,7 +109,7 @@ class Editor {
       const transformedTree = TreeUtils.transform(this.tmp.dirtyTree, operation)
       this.tmp.dirtyTree = TreeUtils.addPaths(transformedTree, dirtyLeaves)
     } else {
-          // Get the paths of the affected nodes, and mark them as dirty.
+      // Get the paths of the affected nodes, and mark them as dirty.
       const newDirtyPaths = getDirtyPaths(operation)
       const dirty = this.tmp.dirty.reduce((memo, path) => {
         path = PathUtils.create(path)
@@ -121,8 +120,7 @@ class Editor {
 
       this.tmp.dirty = dirty
     }
-   
-    
+
     // If we're not already, queue the flushing process on the next tick.
     if (!this.tmp.flushing) {
       this.tmp.flushing = true
@@ -131,7 +129,6 @@ class Editor {
 
     return controller
   }
-
 
   switchToTree() {
     this.tmp.dirtyTree = TreeUtils.createFromPaths(this.tmp.dirty)
@@ -572,7 +569,6 @@ function getDirtyPaths(operation) {
   }
 }
 
-
 function getDirtyLeaves(operation) {
   const { type, node, path, newPath } = operation
 
@@ -650,13 +646,14 @@ function normalizeDirtyPaths(editor) {
     })
   } else if (editor.tmp.dirty.length) {
     editor.withoutNormalizing(() => {
-      let currentLength
+      let len
+
       while (editor.tmp.dirty.length) {
-        currentLength = editor.tmp.dirty.length
+        len = editor.tmp.dirty.length
         const path = editor.tmp.dirty.pop()
         normalizeNodeByPath(editor, path)
 
-        if (currentLength <= editor.tmp.dirty.length) {
+        if (len <= editor.tmp.dirty.length) {
           editor.switchToTree()
         }
       }

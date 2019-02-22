@@ -371,9 +371,6 @@ function transform(path, operation) {
   return List(paths)
 }
 
-
-
-
 /**
  * Export.
  *

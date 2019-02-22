@@ -21,7 +21,6 @@ function createFromPaths(paths) {
   return tree
 }
 
-
 function getPathArray(tree = Map()) {
   function walker(localTree, parentPath = PathUtils.create([])) {
     return localTree.reduce((arr, subTree, key) => {
@@ -44,8 +43,12 @@ function getPathArray(tree = Map()) {
   return arr
 }
 
-
-function forEachEqualOrGreaterPath(tree = Map(), fn, targetPath = PathUtils.create([]), fromRight = false) {
+function forEachEqualOrGreaterPath(
+  tree = Map(),
+  fn,
+  targetPath = PathUtils.create([]),
+  fromRight = false
+) {
   function walker(localTree, parentPath = PathUtils.create([])) {
     const continuation_arr = []
 
@@ -61,13 +64,13 @@ function forEachEqualOrGreaterPath(tree = Map(), fn, targetPath = PathUtils.crea
         let ret
 
         if (
-          PathUtils.isYounger(targetPath, fullPath)
-          || PathUtils.isAbove(targetPath, fullPath)
-          || PathUtils.isEqual(targetPath, fullPath)
+          PathUtils.isYounger(targetPath, fullPath) ||
+          PathUtils.isAbove(targetPath, fullPath) ||
+          PathUtils.isEqual(targetPath, fullPath)
         ) {
           ret = fn(subTree, fullPath)
         }
-       
+
         if (ret !== false) {
           continuation_arr.push(fullPath)
         }
@@ -82,8 +85,13 @@ function forEachEqualOrGreaterPath(tree = Map(), fn, targetPath = PathUtils.crea
   walker(tree)
 }
 
-
-const TREE_CHANGING_OP_TYPES = ['insert_node', 'remove_node', 'split_node', 'merge_node', 'move_node']
+const TREE_CHANGING_OP_TYPES = [
+  'insert_node',
+  'remove_node',
+  'split_node',
+  'merge_node',
+  'move_node',
+]
 
 function transform(tree = Map(), operation) {
   const { type, position, path, newPath } = operation
@@ -92,20 +100,24 @@ function transform(tree = Map(), operation) {
     return tree
   }
 
-
   if (type === 'insert_node') {
     return tree.withMutations(transformed => {
       // Iterate from right to left so that as we delete existing nodes,
       // We are not deleting nodes that just moved
-      forEachEqualOrGreaterPath(tree, (localTree, localPath) => {
-        // Bump existing paths up one as appropriate
-        transformed.setIn(PathUtils.increment(localPath), localTree)
+      forEachEqualOrGreaterPath(
+        tree,
+        (localTree, localPath) => {
+          // Bump existing paths up one as appropriate
+          transformed.setIn(PathUtils.increment(localPath), localTree)
 
-        // Delete the tree at this path
-        transformed.deleteIn(localPath)
+          // Delete the tree at this path
+          transformed.deleteIn(localPath)
 
-        return false
-      }, path, true)
+          return false
+        },
+        path,
+        true
+      )
     })
   }
 
@@ -117,69 +129,86 @@ function transform(tree = Map(), operation) {
     return tree.withMutations(transformed => {
       // Iterate from left to right so that as we delete existing nodes,
       // We are not deleting nodes that just moved
-      forEachEqualOrGreaterPath(tree, (localTree, localPath) => {
-        // Bump existing paths down one as appropriate
-        transformed.setIn(PathUtils.decrement(localPath), localTree)
+      forEachEqualOrGreaterPath(
+        tree,
+        (localTree, localPath) => {
+          // Bump existing paths down one as appropriate
+          transformed.setIn(PathUtils.decrement(localPath), localTree)
 
-        // Delete the tree at this path
-        transformed.deleteIn(localPath)
+          // Delete the tree at this path
+          transformed.deleteIn(localPath)
 
-        return false
-      }, path)
+          return false
+        },
+        path
+      )
     })
   }
 
   if (type === 'merge_node') {
     return tree.withMutations(transformed => {
-      forEachEqualOrGreaterPath(tree, (localTree, localPath) => {
-        if (PathUtils.isEqual(localPath, path)) {
-          transformed.deleteIn(localPath)
-          // We want to iterate the children of the node that gets merged, so return true
-          return true
-        } else if (PathUtils.isAbove(path, localPath)) {
-          // Move the child of the merged node to its new path, then stop iterating
-          let newPath = PathUtils.decrement(localPath, 1, path.size - 1)
-          newPath = PathUtils.increment(newPath, position)
-          
-          transformed.setIn(newPath, localTree)
+      forEachEqualOrGreaterPath(
+        tree,
+        (localTree, localPath) => {
+          if (PathUtils.isEqual(localPath, path)) {
+            transformed.deleteIn(localPath)
+            // We want to iterate the children of the node that gets merged, so return true
+            return true
+          } else if (PathUtils.isAbove(path, localPath)) {
+            // Move the child of the merged node to its new path, then stop iterating
+            let newPath = PathUtils.decrement(localPath, 1, path.size - 1)
+            newPath = PathUtils.increment(newPath, position)
+
+            transformed.setIn(newPath, localTree)
+            transformed.deleteIn(localPath)
+
+            return false
+          }
+
+          // Same logic as remove_node
+          transformed.setIn(PathUtils.decrement(localPath), localTree)
           transformed.deleteIn(localPath)
 
           return false
-        }
-
-        // Same logic as remove_node
-        transformed.setIn(PathUtils.decrement(localPath), localTree)
-        transformed.deleteIn(localPath)
-
-        return false
-      }, path)
+        },
+        path
+      )
     })
   }
 
   if (type === 'split_node') {
     return tree.withMutations(transformed => {
-      forEachEqualOrGreaterPath(tree, (localTree, localPath) => {
-        if (PathUtils.isEqual(localPath, path)) {
-          // We want to iterate the children of the node that got split, so return true
-          return true
-        } else if (PathUtils.isAbove(path, localPath)) {
-          // Move all of the children after the split point to the new node
-          if (localPath.last() >= position) {
-            transformed.deleteIn(localPath)
-            let newPath = PathUtils.increment(localPath, 1, localPath.size - 2)
-            newPath = PathUtils.decrement(newPath, position)
-            transformed.setIn(newPath, localTree)
+      forEachEqualOrGreaterPath(
+        tree,
+        (localTree, localPath) => {
+          if (PathUtils.isEqual(localPath, path)) {
+            // We want to iterate the children of the node that got split, so return true
+            return true
+          } else if (PathUtils.isAbove(path, localPath)) {
+            // Move all of the children after the split point to the new node
+            if (localPath.last() >= position) {
+              transformed.deleteIn(localPath)
+              let newPath = PathUtils.increment(
+                localPath,
+                1,
+                localPath.size - 2
+              )
+              newPath = PathUtils.decrement(newPath, position)
+              transformed.setIn(newPath, localTree)
+            }
+
+            return false
           }
 
-          return false
-        }
-        
-        // Same logic as insert_node
-        transformed.setIn(PathUtils.increment(localPath), localTree)
-        transformed.deleteIn(localPath)
+          // Same logic as insert_node
+          transformed.setIn(PathUtils.increment(localPath), localTree)
+          transformed.deleteIn(localPath)
 
-        return false
-      }, path, true)
+          return false
+        },
+        path,
+        true
+      )
 
       // We should have had some children nodes moved which would create this, but do a sanity check
       const newNodePath = PathUtils.increment(path)
@@ -211,9 +240,6 @@ function transform(tree = Map(), operation) {
   return tree
 }
 
-
-
-
 /**
  * Get a list of unique paths, including ancestors, from a list of paths
  *
@@ -228,7 +254,6 @@ function getUniquePathsWithAncestors(paths) {
   return arr
 }
 
-
 function getLeafPath(tree = Map()) {
   let currentTree = tree
   const path = []
@@ -242,7 +267,6 @@ function getLeafPath(tree = Map()) {
   return PathUtils.create(path)
 }
 
-
 export default {
   addPaths,
   createFromPaths,
@@ -251,4 +275,3 @@ export default {
   getUniquePathsWithAncestors,
   getLeafPath,
 }
-

@@ -166,14 +166,19 @@ describe('slate', () => {
     fn()
   })
 
-  fixtures(__dirname, 'utils/tree-utils/get-unique-paths-with-ancestors', ({ module }) => {
-    const { input, output: expected } = module
+  fixtures(
+    __dirname,
+    'utils/tree-utils/get-unique-paths-with-ancestors',
+    ({ module }) => {
+      const { input, output: expected } = module
 
-    const paths = input.map(PathUtils.create)
+      const paths = input.map(PathUtils.create)
 
-    const result = TreeUtils.getUniquePathsWithAncestors(paths)
-      .map(path => path.toArray())
+      const result = TreeUtils.getUniquePathsWithAncestors(paths).map(path =>
+        path.toArray()
+      )
 
-    assert.deepEqual(result, expected)
-  })
+      assert.deepEqual(result, expected)
+    }
+  )
 })
