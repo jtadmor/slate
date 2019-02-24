@@ -21,6 +21,25 @@ function createFromPaths(paths) {
   return tree
 }
 
+function createFromNode(node) {
+  const tree = Map().withMutations(map => {
+    function iterator(currentNode, parentPath = []) {
+      if (currentNode.nodes && currentNode.nodes.size) {
+        currentNode.nodes.forEach((child, i) => {
+          const fullPath = parentPath.concat(i)
+          iterator(child, fullPath)
+        })
+      } else {
+        map.setIn(parentPath, Map())
+      }
+    }
+
+    iterator(node)
+  })
+
+  return tree
+}
+
 function getPathArray(tree = Map()) {
   function walker(localTree, parentPath = PathUtils.create([])) {
     return localTree.reduce((arr, subTree, key) => {
@@ -102,20 +121,8 @@ function forEachEqualOrGreaterPath(
   walker(tree)
 }
 
-const TREE_CHANGING_OP_TYPES = [
-  'insert_node',
-  'remove_node',
-  'split_node',
-  'merge_node',
-  'move_node',
-]
-
 function transform(tree = Map(), operation) {
   const { type, position, path } = operation
-
-  if (TREE_CHANGING_OP_TYPES.indexOf(type) === -1) {
-    return tree
-  }
 
   if (!tree.size) {
     return tree
@@ -172,7 +179,6 @@ function transform(tree = Map(), operation) {
         tree,
         (localTree, localPath) => {
           if (PathUtils.isEqual(localPath, path)) {
-            console.log('merge op', localPath, path)
             transformed.deleteIn(localPath)
             // We want to iterate the children of the node that gets merged, so return true
             return true
@@ -293,6 +299,7 @@ function getLeafPath(tree = Map()) {
 export default {
   addPaths,
   createFromPaths,
+  createFromNode,
   transform,
   getPathArray,
   getUniquePathsWithAncestors,

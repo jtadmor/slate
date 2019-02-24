@@ -100,7 +100,11 @@ class Editor {
     this.value = operation.apply(value)
     this.operations = operations.push(operation)
 
-    if (true) {
+    if (this.tmp.dirty.length > 20) {
+      this.switchToTree()
+    }
+
+    if (this.tmp.dirtyTree) {
       // Get the paths of the affected nodes
       const dirtyLeaves = getDirtyLeaves(operation)
 
@@ -111,14 +115,12 @@ class Editor {
     } else {
       // Get the paths of the affected nodes, and mark them as dirty.
       const newDirtyPaths = getDirtyPaths(operation)
-      const dirty = this.tmp.dirty.reduce((memo, path) => {
-        path = PathUtils.create(path)
-        const transformed = PathUtils.transform(path, operation)
-        memo = memo.concat(transformed.toArray())
-        return memo
-      }, newDirtyPaths)
 
-      this.tmp.dirty = dirty
+      const dirty = this.tmp.dirty.map(path =>
+        PathUtils.transform(path, operation).toArray()
+      )
+
+      this.tmp.dirty = Array.prototype.concat.apply(newDirtyPaths, dirty)
     }
 
     // If we're not already, queue the flushing process on the next tick.
@@ -131,6 +133,10 @@ class Editor {
   }
 
   switchToTree() {
+    if (this.tmp.dirtyTree) {
+      return
+    }
+
     this.tmp.dirtyTree = TreeUtils.createFromPaths(this.tmp.dirty)
     this.tmp.dirty = []
   }
@@ -212,10 +218,11 @@ class Editor {
   normalize() {
     const { value, controller } = this
     let { document } = value
+
     const table = document.getKeysToPathsTable()
     const paths = Object.values(table).map(PathUtils.create)
-    this.tmp.dirtyTree = TreeUtils.createFromPaths(paths)
-    // this.tmp.dirty = paths
+    this.tmp.dirty = paths
+
     normalizeDirtyPaths(this)
 
     const { selection } = value
@@ -632,27 +639,40 @@ function normalizeDirtyPaths(editor) {
     return
   }
 
-  if (editor.tmp.dirtyTree) {
-    editor.withoutNormalizing(() => {
-      while (editor.tmp.dirtyTree.size) {
-        const path = TreeUtils.getLeafPath(editor.tmp.dirtyTree)
-        editor.tmp.dirtyTree = editor.tmp.dirtyTree.deleteIn(path)
-        normalizeNodeByPath(editor, path)
-      }
+  const getSize = () =>
+    editor.tmp.dirtyTree ? editor.tmp.dirtyTree.size : editor.tmp.dirty.length
 
+  let size = getSize()
+
+  if (!size) {
+    return
+  }
+
+  const getDirtyPath = () => {
+    if (editor.tmp.dirtyTree) {
+      const path = TreeUtils.getLeafPath(editor.tmp.dirtyTree)
+      editor.tmp.dirtyTree = editor.tmp.dirtyTree.deleteIn(path)
+      return path
+    }
+
+    return editor.tmp.dirty.pop()
+  }
+
+  editor.withoutNormalizing(() => {
+    while (size) {
+      const path = getDirtyPath()
+      normalizeNodeByPath(editor, path)
+
+      size = getSize()
+    }
+
+    if (editor.tmp.dirtyTree) {
       // Normalize the doc
       normalizeNodeByPath(editor, PathUtils.create([]))
 
       editor.tmp.dirtyTree = undefined
-    })
-  } else if (editor.tmp.dirty.length) {
-    editor.withoutNormalizing(() => {
-      while (editor.tmp.dirty.length) {
-        const path = editor.tmp.dirty.pop()
-        normalizeNodeByPath(editor, path)
-      }
-    })
-  }
+    }
+  })
 }
 
 /**
@@ -670,12 +690,16 @@ function normalizeNodeByPath(editor, path) {
   let iterations = 0
   const max = 100 + (node.object === 'text' ? 1 : node.nodes.size)
 
+  let didNormalize = false
+
   while (node) {
     const fn = node.normalize(controller)
 
     if (!fn) {
       break
     }
+
+    didNormalize = true
 
     // Run the normalize `fn` to fix the node.
     fn(controller)
@@ -713,6 +737,8 @@ function normalizeNodeByPath(editor, path) {
       )
     }
   }
+
+  return didNormalize
 }
 
 /**

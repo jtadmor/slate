@@ -1,4 +1,4 @@
-import { List, OrderedMap } from 'immutable'
+import { List } from 'immutable'
 
 /**
  * Compare paths `path` and `target` to see which is before or after.

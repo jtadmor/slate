@@ -100,7 +100,9 @@ export const output = (
         </item>
         <item>
           <text />
-          <emoji />
+          <emoji>
+            <text />
+          </emoji>
           <text />
         </item>
         <item>
