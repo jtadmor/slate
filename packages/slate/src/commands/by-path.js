@@ -73,9 +73,7 @@ Commands.addMarkByPath = (editor, path, offset, length, mark) => {
  */
 
 Commands.insertFragmentByPath = (editor, path, index, fragment) => {
-  fragment.nodes.forEach((node, i) => {
-    editor.insertNodeByPath(path, index + i, node)
-  })
+  editor.insertNodesByPath(path, index, fragment.nodes)
 }
 
 /**
@@ -95,6 +93,17 @@ Commands.insertNodeByPath = (editor, path, index, node) => {
     value,
     path: path.concat(index),
     node,
+  })
+}
+
+Commands.insertNodesByPath = (editor, path, index, nodes) => {
+  const { value } = editor
+
+  editor.applyOperation({
+    type: 'insert_nodes',
+    value,
+    path: path.concat(index),
+    nodes,
   })
 }
 
@@ -751,6 +760,7 @@ const COMMANDS = [
   'addMark',
   'insertFragment',
   'insertNode',
+  'insertNodes',
   'insertText',
   'mergeNode',
   'removeAllMarks',

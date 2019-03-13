@@ -18,11 +18,13 @@ import invert from '../operations/invert'
 const OPERATION_ATTRIBUTES = {
   add_mark: ['value', 'path', 'offset', 'length', 'mark', 'data'],
   insert_node: ['value', 'path', 'node', 'data'],
+  insert_nodes: ['value', 'path', 'nodes', 'data'],
   insert_text: ['value', 'path', 'offset', 'text', 'marks', 'data'],
   merge_node: ['value', 'path', 'position', 'properties', 'target', 'data'],
   move_node: ['value', 'path', 'newPath', 'data'],
   remove_mark: ['value', 'path', 'offset', 'length', 'mark', 'data'],
   remove_node: ['value', 'path', 'node', 'data'],
+  remove_nodes: ['value', 'path', 'nodes', 'data'],
   remove_text: ['value', 'path', 'offset', 'text', 'marks', 'data'],
   set_mark: ['value', 'path', 'offset', 'length', 'mark', 'properties', 'data'],
   set_node: ['value', 'path', 'node', 'properties', 'data'],
@@ -43,6 +45,7 @@ const DEFAULTS = {
   marks: undefined,
   newPath: undefined,
   node: undefined,
+  nodes: undefined,
   offset: undefined,
   path: undefined,
   position: undefined,
@@ -138,6 +141,7 @@ class Operation extends Record(DEFAULTS) {
         if (key === 'selection') continue
         if (key === 'value') continue
         if (key === 'node' && type !== 'insert_node') continue
+        if (key === 'nodes' && type !== 'insert_nodes') continue
 
         throw new Error(
           `\`Operation.fromJSON\` was passed a "${type}" operation without the required "${key}" attribute.`
@@ -158,6 +162,10 @@ class Operation extends Record(DEFAULTS) {
 
       if (key === 'node') {
         v = Node.create(v)
+      }
+
+      if (key === 'nodes') {
+        v = List(v.map(val => Node.create(val)))
       }
 
       if (key === 'selection') {

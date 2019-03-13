@@ -37,6 +37,17 @@ function applyOperation(value, op) {
       return next
     }
 
+    case 'insert_nodes': {
+      const { path, nodes } = op
+      let next = value
+      
+      nodes.forEach((node, i) => {
+        next = next.insertNode(PathUtils.increment(path, i), node)
+      })
+
+      return next
+    }
+
     case 'insert_text': {
       const { path, offset, text, marks } = op
       const next = value.insertText(path, offset, text, marks)
@@ -69,6 +80,18 @@ function applyOperation(value, op) {
     case 'remove_node': {
       const { path } = op
       const next = value.removeNode(path)
+      return next
+    }
+
+    case 'remove_nodes': {
+      const { path, nodes } = op
+      let next = value
+
+      nodes.forEach((n, i) => {
+        // No need to increment path, the next node now occupies the same path
+        next = next.removeNode(path)
+      })
+
       return next
     }
 

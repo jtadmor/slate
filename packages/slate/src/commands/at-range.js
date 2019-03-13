@@ -753,10 +753,12 @@ Commands.insertFragmentAtRange = (editor, range, fragment) => {
       const startIndex = parent.nodes.indexOf(startBlock)
       const excludingLonelyChild = insertionNode.removeNode(lonelyChild.key)
 
-      excludingLonelyChild.nodes.forEach((node, i) => {
-        const newIndex = startIndex + i + 1
-        editor.insertNodeByKey(parent.key, newIndex, node)
-      })
+      // excludingLonelyChild.nodes.forEach((node, i) => {
+      //   const newIndex = startIndex + i + 1
+      //   editor.insertNodeByKey(parent.key, newIndex, node)
+      // })
+      
+      editor.insertNodesByKey(parent.key, startIndex + 1, excludingLonelyChild.nodes)
     }
 
     // Check if we need to split the node.
@@ -802,12 +804,15 @@ Commands.insertFragmentAtRange = (editor, range, fragment) => {
       // block's inline nodes into it at the split point.
       const inlineChild = startBlock.getFurthestAncestor(startText.key)
       const inlineIndex = startBlock.nodes.indexOf(inlineChild)
+      const startIndex = inlineIndex + (start.offset === 0 ? 0 : 1)
+  
+      // firstBlock.nodes.forEach((inline, i) => {
+      //   const o = start.offset === 0 ? 0 : 1
+      //   const newIndex = inlineIndex + i + o
+      //   editor.insertNodeByKey(startBlock.key, newIndex, inline)
+      // })
 
-      firstBlock.nodes.forEach((inline, i) => {
-        const o = start.offset === 0 ? 0 : 1
-        const newIndex = inlineIndex + i + o
-        editor.insertNodeByKey(startBlock.key, newIndex, inline)
-      })
+      editor.insertNodesByKey(startBlock.key, startIndex, firstBlock.nodes)
     }
   })
 }

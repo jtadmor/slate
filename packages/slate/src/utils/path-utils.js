@@ -302,9 +302,10 @@ function transform(path, operation) {
   const pYounger = isYounger(p, path)
   const pAbove = isAbove(p, path)
 
-  if (type === 'insert_node') {
+  if (type === 'insert_node' || type === 'insert_nodes') {
     if (pEqual || pYounger || pAbove) {
-      path = increment(path, 1, pIndex)
+      const incr = operation.nodes ? operation.nodes.size : 1
+      path = increment(path, incr, pIndex)
     }
   }
 
@@ -313,6 +314,26 @@ function transform(path, operation) {
       path = decrement(path, 1, pIndex)
     } else if (pEqual || pAbove) {
       path = []
+    }
+  }
+
+  if (type === 'remove_nodes') {
+    if (pYounger) {
+      const decr = operation.nodes.size
+      path = decrement(path, decr, pIndex)
+    } else {
+      // See if any of the remove paths were above or equal to the path we are checking
+      const related = relate(path, p)
+
+      if (related.size === p.size - 1 || isEqual(related, p)) {
+        const allDeletedPaths = operation.nodes.map((n, i) => increment(path, i))
+
+        const anyEqualOrAbove = allDeletedPaths.some(deletedPath => isAbove(deletedPath, path) || isEqual(deletedPath, path))
+
+        if (anyEqualOrAbove) {
+          path = []
+        }
+      }
     }
   }
 

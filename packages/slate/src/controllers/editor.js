@@ -511,6 +511,19 @@ function getDirtyPaths(operation) {
       return [...ancestors, path, ...paths]
     }
 
+    case 'insert_nodes': {
+      const paths = operation.nodes.reduce((arr, node, i) => {
+        const table = node.getKeysToPathsTable()
+        const insertion_path = PathUtils.increment(path, i)
+        const paths = Object.values(table).map(p => insertion_path.concat(p))
+        arr.push(insertion_path, ...paths)
+        return arr
+      }, [])
+
+      const ancestors = PathUtils.getAncestors(path).toArray()
+      return [...ancestors, ...paths]
+    }
+
     case 'split_node': {
       const ancestors = PathUtils.getAncestors(path).toArray()
       const nextPath = PathUtils.increment(path)
@@ -541,7 +554,8 @@ function getDirtyPaths(operation) {
       return [...oldAncestors, ...newAncestors]
     }
 
-    case 'remove_node': {
+    case 'remove_node': 
+    case 'remove_nodes': {
       const ancestors = PathUtils.getAncestors(path).toArray()
       return [...ancestors]
     }

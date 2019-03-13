@@ -30,8 +30,18 @@ function invertOperation(op) {
       return inverse
     }
 
+    case 'insert_nodes': {
+      const inverse = op.set('type', 'remove_nodes')
+      return inverse
+    }
+
     case 'remove_node': {
       const inverse = op.set('type', 'insert_node')
+      return inverse
+    }
+
+    case 'remove_nodes': {
+      const inverse = op.set('type', 'insert_nodes')
       return inverse
     }
 
