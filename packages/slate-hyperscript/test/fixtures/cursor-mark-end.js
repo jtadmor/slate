@@ -1,85 +1,42 @@
-/** @jsx h */
+/** @jsx jsx */
 
-import h from 'slate-hyperscript'
+import { jsx } from 'slate-hyperscript'
 
 export const input = (
-  <value>
-    <document>
-      <block type="paragraph">
+  <editor>
+    <element>
+      <mark>
         one
-        <mark type="bold">
-          two<cursor />
-        </mark>
-        three
-      </block>
-    </document>
-  </value>
+        <cursor />
+      </mark>
+      two
+    </element>
+  </editor>
 )
 
-export const options = {
-  preserveSelection: true,
-  preserveKeys: true,
-}
-
 export const output = {
-  object: 'value',
-  document: {
-    object: 'document',
-    data: {},
-    key: '2',
-    nodes: [
-      {
-        object: 'block',
-        key: '1',
-        type: 'paragraph',
-        data: {},
-        nodes: [
-          {
-            object: 'text',
-            key: '0',
-            leaves: [
-              {
-                object: 'leaf',
-                text: 'one',
-                marks: [],
-              },
-              {
-                object: 'leaf',
-                text: 'two',
-                marks: [
-                  {
-                    object: 'mark',
-                    type: 'bold',
-                    data: {},
-                  },
-                ],
-              },
-              {
-                object: 'leaf',
-                text: 'three',
-                marks: [],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
+  children: [
+    {
+      children: [
+        {
+          text: 'one',
+          marks: [{}],
+        },
+        {
+          text: 'two',
+          marks: [],
+        },
+      ],
+    },
+  ],
   selection: {
-    object: 'selection',
     anchor: {
-      object: 'point',
-      key: '0',
       path: [0, 0],
-      offset: 6,
+      offset: 3,
     },
     focus: {
-      object: 'point',
-      key: '0',
       path: [0, 0],
-      offset: 6,
+      offset: 3,
     },
-    isFocused: true,
-    marks: null,
   },
 }

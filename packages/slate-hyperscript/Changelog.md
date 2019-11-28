@@ -4,6 +4,56 @@ This document maintains a list of changes to the `slate-hyperscript` package wit
 
 ---
 
+### `0.50.0` — November 27, 2019
+
+###### BREAKING
+
+**A complete overhaul.** The Slate codebase has had a complete overhaul and many pieces of its core architecture have been reconsidered from the ground up. There are lots of changes. We recommend re-reading the [Walkthroughs](https://docs.slatejs.org/walkthroughs) and [Concepts](https://docs.slatejs.org/concepts) documentation and the [Examples](../../site/examples) to get a sense for everything that has changed. As well as the [Migration](https://docs.slatejs.org/concepts/XX-migrating) writeup for what the major changes are.
+
+---
+
+### `0.13.0` — May 8, 2019
+
+###### BREAKING
+
+**Updated to work with `slate@0.47`.** The hyperscript creators have been updated to work with the `Annotation` model introduced in the latest version of Slate.
+
+**The `slate-hyperscript` package now uses the "annotations" name.** All of the existing APIs that previously used the word "decorations" in `slate-hyperscript` have been updated.
+
+---
+
+### `0.12.0` — May 1, 2019
+
+###### BREAKING
+
+**Updated to work with `slate@0.46`.** The hyperscript creators have been updated to work alongside the new text data model in the latest version of slate.
+
+**The `<text>` and `<mark>` hyperscript tags must now return a single text node.** Previously they were more lenient, and might return an array of text nodes. This made it hard to be explicit in tests, and made certain configurations impossible. This new restriction makes it easier to reason about what the tags return, even if it makes certain cases slightly more verbose. For example:
+
+```jsx
+<paragraph>
+  <b>
+    a few <i>italic</i> and bold words.
+  </b>
+</paragraph>
+```
+
+Must now be written as:
+
+```jsx
+<paragraph>
+  <b>a few </b>
+  <b>
+    <i>italic</i>
+  </b>
+  <b> and bold words.</b>
+</paragraph>
+```
+
+Slightly more verbose, but with the benefit of being easy to tell exactly how many text nodes you will receive in your resulting document. And it allows setting `key=` values on the mark tags directly, since they map `1:1` to text nodes.
+
+---
+
 ### `0.11.0` — October 9, 2018
 
 ###### BREAKING
@@ -52,11 +102,11 @@ Similarly, these are no longer equivalent either:
 
 This allows you to much more easily test invalid states and transition states. However, it means that you need to be more explicit in the "normal" states than previously.
 
-**The `<text>` and `<mark>` creators now return useful objects.** This is a related change that makes the library more useful. Previously you could expect to receive a `value` from the `<value>` creator, but the others were less consistent. For example, the `<text>` creator would actually return an array, instead of the `Text` node that you expect.
+**The `<text>` and `<mark>` creators now return useful objects.** This is a related change that makes the library more useful. Previously you could expect to receive a `value` from the `<editor>` creator, but the others were less consistent. For example, the `<text>` creator would actually return an array, instead of the `Text` node that you expect.
 
 ```js
 // Previously you had to do...
-const text = <text>word</text>[0]
+const text = (<text>word</text>)[0]
 
 // But now it's more obvious...
 const text = <text>word</text>
@@ -78,7 +128,7 @@ Similarly, the `mark` creator used to return a `Text` node. Now it returns a lis
 
 ###### NEW
 
-**Introducing the `schema` option.** You can now pass in a `schema` option to the `createHyperscript` factory, which will ensure that schema rules are bound whenever you use the `<value>` tag. This is helpful for defining atomicity of decorations, or the voidness of nodes in the future.
+**Introducing the `schema` option.** You can now pass in a `schema` option to the `createHyperscript` factory, which will ensure that schema rules are bound whenever you use the `<editor>` tag. This is helpful for defining atomicity of decorations, or the voidness of nodes in the future.
 
 ###### BREAKING
 
@@ -149,7 +199,7 @@ const selection = (
 
 ###### DEPRECATED
 
-**The `<state>` tag has been renamed to `<value>`.** This is to stay in line with the newest version of Slate where the `State` object was renamed to `Value`.
+**The `<state>` tag has been renamed to `<editor>`.** This is to stay in line with the newest version of Slate where the `State` object was renamed to `Value`.
 
 ---
 

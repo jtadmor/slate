@@ -1,29 +1,20 @@
 import assert from 'assert'
-import { Value } from 'slate'
-import { fixtures } from 'slate-dev-test-utils'
+import { resolve } from 'path'
+import { fixtures } from '../../../support/fixtures'
 
 describe('slate-hyperscript', () => {
-  fixtures(__dirname, 'fixtures', ({ module }) => {
-    const { input, output, options } = module
-    const actual = input.toJSON(options)
-    const expected = Value.isValue(output) ? output.toJSON() : output
-    assert.deepEqual(actual, expected)
-  })
+  fixtures(resolve(__dirname, 'fixtures'), ({ module }) => {
+    const { input, output } = module
+    let actual = {}
 
-  fixtures.skip(__dirname, 'decorations', ({ module }) => {
-    const { input, output, expectDecorations } = module
-    const actual = input.toJSON()
-    const expected = Value.isValue(output) ? output.toJSON() : output
-    assert.deepEqual(actual, expected)
+    if (Array.isArray(output)) {
+      actual = output
+    } else {
+      for (const key in output) {
+        actual[key] = input[key]
+      }
+    }
 
-    expectDecorations.forEach((decoration, i) => {
-      Object.keys(decoration).forEach(prop => {
-        assert.deepEqual(
-          decoration[prop],
-          input.decorations.toJS()[i][prop],
-          `decoration ${i} had incorrect prop: ${prop}`
-        )
-      })
-    })
+    assert.deepEqual(actual, output)
   })
 })
