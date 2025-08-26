@@ -1,14 +1,10 @@
-import { Editor } from 'slate'
-import { createContext, useContext } from 'react'
+import { useContext } from 'react'
+
+import { EditorContext } from './use-slate-static'
 
 /**
- * A React context for sharing the `Editor` class.
- */
-
-export const EditorContext = createContext<Editor | null>(null)
-
-/**
- * Get the current `Editor` class that the component lives under.
+ * Get the current editor object from the React context.
+ * @deprecated Use useSlateStatic instead.
  */
 
 export const useEditor = () => {

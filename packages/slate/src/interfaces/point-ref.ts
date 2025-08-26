@@ -1,4 +1,5 @@
 import { Operation, Point } from '..'
+import { TextDirection } from '../types/types'
 
 /**
  * `PointRef` objects keep a specific point in a document synced over time as new
@@ -8,15 +9,19 @@ import { Operation, Point } from '..'
 
 export interface PointRef {
   current: Point | null
-  affinity: 'forward' | 'backward' | null
+  affinity: TextDirection | null
   unref(): Point | null
 }
 
-export const PointRef = {
+export interface PointRefInterface {
   /**
    * Transform the point ref's current value by an operation.
    */
+  transform: (ref: PointRef, op: Operation) => void
+}
 
+// eslint-disable-next-line no-redeclare
+export const PointRef: PointRefInterface = {
   transform(ref: PointRef, op: Operation): void {
     const { current, affinity } = ref
 

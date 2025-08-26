@@ -1,28 +1,17 @@
 # Plugins
 
-You've already seen how the behaviors of Slate editors can be overriden. These overrides can also be packaged up into "plugins" to be reused, tested and shared. This is one of the most powerful aspects of Slate's architecture.
+You've already seen how the behaviors of Slate editors can be overridden. These overrides can also be packaged up into "plugins" to be reused, tested and shared. This is one of the most powerful aspects of Slate's architecture.
 
 A plugin is simply a function that takes an `Editor` object and returns it after it has augmented it in some way.
 
-For example, a plugin that handles images:
+For example, a plugin that marks image nodes as "void":
 
-```js
+```javascript
 const withImages = editor => {
-  const { exec, isVoid } = editor
-
-  editor.exec = command => {
-    if (command.type === 'insert_image') {
-      const { url } = command
-      const text = { text: '', marks: [] }
-      const element = { type: 'image', url, children: [text] }
-      Editor.insertNodes(editor)
-    } else {
-      exec(command)
-    }
-  }
+  const { isVoid } = editor
 
   editor.isVoid = element => {
-    return element.type === 'image' ? true : isVoid(editor)
+    return element.type === 'image' ? true : isVoid(element)
   }
 
   return editor
@@ -31,42 +20,35 @@ const withImages = editor => {
 
 And then to use the plugin, simply:
 
-```js
+```javascript
 import { createEditor } from 'slate'
 
 const editor = withImages(createEditor())
-
-// Later, when you want to insert an image...
-editor.exec({
-  type: 'insert_image',
-  url: 'https://unsplash.com/photos/m0By_H6ofeE',
-})
 ```
 
 This plugin composition model makes Slate extremely easy to extend!
 
-## Helpers Functions
+## Helper Functions
 
 In addition to the plugin functions, you might want to expose helper functions that are used alongside your plugins. For example:
 
-```js
-const ImageElement = {
+```javascript
+import { Editor, Element } from 'slate'
+
+const MyEditor = {
+  ...Editor,
+  insertImage(editor, url) {
+    const element = { type: 'image', url, children: [{ text: '' }] }
+    Transforms.insertNodes(editor, element)
+  },
+}
+
+const MyElement = {
+  ...Element,
   isImageElement(value) {
     return Element.isElement(element) && element.type === 'image'
   },
 }
 ```
 
-That way you can reuse your helpers. Or even mix them with the core Slate helpers to create your own bundle, like:
-
-```js
-import { Element } from 'slate'
-import { ImageElement } from './images'
-
-export const MyElement = {
-  ...Element,
-  ...ImageElement,
-}
-```
-
-Then you can use `MySelect` everywhere and have access to all your helpers in one place.
+Then you can use `MyEditor` and `MyElement` everywhere and have access to all your helpers in one place.

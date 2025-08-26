@@ -2,22 +2,21 @@ const fs = require('fs')
 const path = require('path')
 
 module.exports = {
-  exportPathMap: async (defaultPathMap, config) => {
-    const { dir } = config
-    const examples = fs.readdirSync(path.resolve(dir, 'examples'))
-    const pages = {
-      '/': { page: '/' },
-    }
-
-    for (const file of examples) {
-      if (!file.endsWith('.js')) {
-        continue
-      }
-
-      const example = file.replace('.js', '')
-      pages[`/examples/${example}`] = { page: '/examples/[example]', example }
-    }
-
-    return pages
+  webpack: config => {
+    config.module.rules.push({
+      test: /\.js$/,
+      enforce: 'pre',
+      exclude: [/node_modules[\\\/]@next/, /node_modules[\\\/]next/],
+      use: [
+        {
+          loader: require.resolve('source-map-loader'),
+        },
+      ],
+    })
+    return config
+  },
+  // https://answers.netlify.com/t/basic-nextjs-website-failing-to-build-with-exit-code-129/120273/2
+  experimental: {
+    cpus: 1,
   },
 }

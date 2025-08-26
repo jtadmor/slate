@@ -1,110 +1,131 @@
-import { Mark, Node, Path, Range } from '..'
-import isPlainObject from 'is-plain-object'
+import { ExtendedType, Node, Path, Range, isObject } from '..'
 
-type AddMarkOperation = {
-  type: 'add_mark'
-  path: Path
-  mark: Mark
-  [key: string]: any
-}
-
-type InsertNodeOperation = {
+export type BaseInsertNodeOperation = {
   type: 'insert_node'
   path: Path
   node: Node
-  [key: string]: any
 }
 
-type InsertTextOperation = {
+export type InsertNodeOperation = ExtendedType<
+  'InsertNodeOperation',
+  BaseInsertNodeOperation
+>
+
+export type BaseInsertTextOperation = {
   type: 'insert_text'
   path: Path
   offset: number
   text: string
-  [key: string]: any
 }
 
-type MergeNodeOperation = {
+export type InsertTextOperation = ExtendedType<
+  'InsertTextOperation',
+  BaseInsertTextOperation
+>
+
+export type BaseMergeNodeOperation = {
   type: 'merge_node'
   path: Path
   position: number
-  target: number | null
   properties: Partial<Node>
-  [key: string]: any
 }
 
-type MoveNodeOperation = {
+export type MergeNodeOperation = ExtendedType<
+  'MergeNodeOperation',
+  BaseMergeNodeOperation
+>
+
+export type BaseMoveNodeOperation = {
   type: 'move_node'
   path: Path
   newPath: Path
-  [key: string]: any
 }
 
-type RemoveMarkOperation = {
-  type: 'remove_mark'
-  path: Path
-  mark: Mark
-  [key: string]: any
-}
+export type MoveNodeOperation = ExtendedType<
+  'MoveNodeOperation',
+  BaseMoveNodeOperation
+>
 
-type RemoveNodeOperation = {
+export type BaseRemoveNodeOperation = {
   type: 'remove_node'
   path: Path
   node: Node
-  [key: string]: any
 }
 
-type RemoveTextOperation = {
+export type RemoveNodeOperation = ExtendedType<
+  'RemoveNodeOperation',
+  BaseRemoveNodeOperation
+>
+
+export type BaseRemoveTextOperation = {
   type: 'remove_text'
   path: Path
   offset: number
   text: string
-  [key: string]: any
 }
 
-type SetMarkOperation = {
-  type: 'set_mark'
-  path: Path
-  properties: Partial<Mark>
-  newProperties: Partial<Mark>
-  [key: string]: any
-}
+export type RemoveTextOperation = ExtendedType<
+  'RemoveTextOperation',
+  BaseRemoveTextOperation
+>
 
-type SetNodeOperation = {
+export type BaseSetNodeOperation = {
   type: 'set_node'
   path: Path
   properties: Partial<Node>
   newProperties: Partial<Node>
-  [key: string]: any
 }
 
-type SetSelectionOperation =
+export type SetNodeOperation = ExtendedType<
+  'SetNodeOperation',
+  BaseSetNodeOperation
+>
+
+export type BaseSetSelectionOperation =
   | {
       type: 'set_selection'
-      [key: string]: any
       properties: null
       newProperties: Range
     }
   | {
       type: 'set_selection'
-      [key: string]: any
       properties: Partial<Range>
       newProperties: Partial<Range>
     }
   | {
       type: 'set_selection'
-      [key: string]: any
       properties: Range
       newProperties: null
     }
 
-type SplitNodeOperation = {
+export type SetSelectionOperation = ExtendedType<
+  'SetSelectionOperation',
+  BaseSetSelectionOperation
+>
+
+export type BaseSplitNodeOperation = {
   type: 'split_node'
   path: Path
   position: number
-  target: number | null
   properties: Partial<Node>
-  [key: string]: any
 }
+
+export type SplitNodeOperation = ExtendedType<
+  'SplitNodeOperation',
+  BaseSplitNodeOperation
+>
+
+export type NodeOperation =
+  | InsertNodeOperation
+  | MergeNodeOperation
+  | MoveNodeOperation
+  | RemoveNodeOperation
+  | SetNodeOperation
+  | SplitNodeOperation
+
+export type SelectionOperation = SetSelectionOperation
+
+export type TextOperation = InsertTextOperation | RemoveTextOperation
 
 /**
  * `Operation` objects define the low-level instructions that Slate editors use
@@ -113,182 +134,117 @@ type SplitNodeOperation = {
  * collaboration, and other features.
  */
 
-type Operation =
-  | NodeOperation
-  | MarkOperation
-  | SelectionOperation
-  | TextOperation
+export type BaseOperation = NodeOperation | SelectionOperation | TextOperation
+export type Operation = ExtendedType<'Operation', BaseOperation>
 
-type NodeOperation =
-  | InsertNodeOperation
-  | MergeNodeOperation
-  | MoveNodeOperation
-  | RemoveNodeOperation
-  | SetNodeOperation
-  | SplitNodeOperation
-
-type MarkOperation = AddMarkOperation | RemoveMarkOperation | SetMarkOperation
-
-type SelectionOperation = SetSelectionOperation
-
-type TextOperation = InsertTextOperation | RemoveTextOperation
-
-const Operation = {
+export interface OperationInterface {
   /**
-   * Check of a value is a `NodeOperation` object.
+   * Check if a value is a `NodeOperation` object.
    */
-
-  isNodeOperation(value: any): value is NodeOperation {
-    return Operation.isOperation(value) && value.type.endsWith('_node')
-  },
+  isNodeOperation: (value: any) => value is NodeOperation
 
   /**
-   * Check of a value is a `MarkOperation` object.
+   * Check if a value is an `Operation` object.
    */
-
-  isMarkOperation(value: any): value is MarkOperation {
-    return Operation.isOperation(value) && value.type.endsWith('_mark')
-  },
-
-  /**
-   * Check of a value is an `Operation` object.
-   */
-
-  isOperation(value: any): value is Operation {
-    if (!isPlainObject(value)) {
-      return false
-    }
-
-    switch (value.type) {
-      case 'add_mark': {
-        return Path.isPath(value.path) && Mark.isMark(value.mark)
-      }
-
-      case 'insert_node': {
-        return Path.isPath(value.path) && Node.isNode(value.node)
-      }
-
-      case 'insert_text': {
-        return (
-          typeof value.offset === 'number' &&
-          typeof value.text === 'string' &&
-          Path.isPath(value.path)
-        )
-      }
-
-      case 'merge_node': {
-        return (
-          typeof value.position === 'number' &&
-          (typeof value.target === 'number' || value.target === null) &&
-          Path.isPath(value.path) &&
-          isPlainObject(value.properties)
-        )
-      }
-
-      case 'move_node': {
-        return Path.isPath(value.path) && Path.isPath(value.newPath)
-      }
-
-      case 'remove_mark': {
-        return Path.isPath(value.path) && Mark.isMark(value.mark)
-      }
-
-      case 'remove_node': {
-        return Path.isPath(value.path) && Node.isNode(value.node)
-      }
-
-      case 'remove_text': {
-        return (
-          typeof value.offset === 'number' &&
-          typeof value.text === 'string' &&
-          Path.isPath(value.path)
-        )
-      }
-
-      case 'set_mark': {
-        return (
-          Path.isPath(value.path) &&
-          isPlainObject(value.properties) &&
-          isPlainObject(value.newProperties)
-        )
-      }
-
-      case 'set_node': {
-        return (
-          Path.isPath(value.path) &&
-          isPlainObject(value.properties) &&
-          isPlainObject(value.newProperties)
-        )
-      }
-
-      case 'set_selection': {
-        return (
-          (value.properties === null && Range.isRange(value.newProperties)) ||
-          (value.newProperties === null && Range.isRange(value.properties)) ||
-          (isPlainObject(value.properties) &&
-            isPlainObject(value.newProperties))
-        )
-      }
-
-      case 'set_value': {
-        return (
-          isPlainObject(value.properties) && isPlainObject(value.newProperties)
-        )
-      }
-
-      case 'split_node': {
-        return (
-          Path.isPath(value.path) &&
-          typeof value.position === 'number' &&
-          (typeof value.target === 'number' || value.target === null) &&
-          isPlainObject(value.properties)
-        )
-      }
-
-      default: {
-        return false
-      }
-    }
-  },
+  isOperation: (value: any) => value is Operation
 
   /**
    * Check if a value is a list of `Operation` objects.
    */
-
-  isOperationList(value: any): value is Operation[] {
-    return (
-      Array.isArray(value) &&
-      (value.length === 0 || Operation.isOperation(value[0]))
-    )
-  },
+  isOperationList: (value: any) => value is Operation[]
 
   /**
-   * Check of a value is a `SelectionOperation` object.
+   * Check if a value is a `SelectionOperation` object.
    */
-
-  isSelectionOperation(value: any): value is SelectionOperation {
-    return Operation.isOperation(value) && value.type.endsWith('_selection')
-  },
+  isSelectionOperation: (value: any) => value is SelectionOperation
 
   /**
-   * Check of a value is a `TextOperation` object.
+   * Check if a value is a `TextOperation` object.
    */
-
-  isTextOperation(value: any): value is TextOperation {
-    return Operation.isOperation(value) && value.type.endsWith('_text')
-  },
+  isTextOperation: (value: any) => value is TextOperation
 
   /**
    * Invert an operation, returning a new operation that will exactly undo the
    * original when applied.
    */
+  inverse: (op: Operation) => Operation
+}
+
+// eslint-disable-next-line no-redeclare
+export const Operation: OperationInterface = {
+  isNodeOperation(value: any): value is NodeOperation {
+    return Operation.isOperation(value) && value.type.endsWith('_node')
+  },
+
+  isOperation(value: any): value is Operation {
+    if (!isObject(value)) {
+      return false
+    }
+
+    switch (value.type) {
+      case 'insert_node':
+        return Path.isPath(value.path) && Node.isNode(value.node)
+      case 'insert_text':
+        return (
+          typeof value.offset === 'number' &&
+          typeof value.text === 'string' &&
+          Path.isPath(value.path)
+        )
+      case 'merge_node':
+        return (
+          typeof value.position === 'number' &&
+          Path.isPath(value.path) &&
+          isObject(value.properties)
+        )
+      case 'move_node':
+        return Path.isPath(value.path) && Path.isPath(value.newPath)
+      case 'remove_node':
+        return Path.isPath(value.path) && Node.isNode(value.node)
+      case 'remove_text':
+        return (
+          typeof value.offset === 'number' &&
+          typeof value.text === 'string' &&
+          Path.isPath(value.path)
+        )
+      case 'set_node':
+        return (
+          Path.isPath(value.path) &&
+          isObject(value.properties) &&
+          isObject(value.newProperties)
+        )
+      case 'set_selection':
+        return (
+          (value.properties === null && Range.isRange(value.newProperties)) ||
+          (value.newProperties === null && Range.isRange(value.properties)) ||
+          (isObject(value.properties) && isObject(value.newProperties))
+        )
+      case 'split_node':
+        return (
+          Path.isPath(value.path) &&
+          typeof value.position === 'number' &&
+          isObject(value.properties)
+        )
+      default:
+        return false
+    }
+  },
+
+  isOperationList(value: any): value is Operation[] {
+    return (
+      Array.isArray(value) && value.every(val => Operation.isOperation(val))
+    )
+  },
+
+  isSelectionOperation(value: any): value is SelectionOperation {
+    return Operation.isOperation(value) && value.type.endsWith('_selection')
+  },
+
+  isTextOperation(value: any): value is TextOperation {
+    return Operation.isOperation(value) && value.type.endsWith('_text')
+  },
 
   inverse(op: Operation): Operation {
     switch (op.type) {
-      case 'add_mark': {
-        return { ...op, type: 'remove_mark' }
-      }
-
       case 'insert_node': {
         return { ...op, type: 'remove_node' }
       }
@@ -309,16 +265,21 @@ const Operation = {
           return op
         }
 
-        // We need to get the original path here, but sometimes the `newPath`
-        // is a younger sibling of (or ends before) the original, and this
-        // accounts for it.
+        // If the move happens completely within a single parent the path and
+        // newPath are stable with respect to each other.
+        if (Path.isSibling(path, newPath)) {
+          return { ...op, path: newPath, newPath: path }
+        }
+
+        // If the move does not happen within a single parent it is possible
+        // for the move to impact the true path to the location where the node
+        // was removed from and where it was inserted. We have to adjust for this
+        // and find the original path. We can accomplish this (only in non-sibling)
+        // moves by looking at the impact of the move operation on the node
+        // after the original move path.
         const inversePath = Path.transform(path, op)!
         const inverseNewPath = Path.transform(Path.next(path), op)!
         return { ...op, path: inversePath, newPath: inverseNewPath }
-      }
-
-      case 'remove_mark': {
-        return { ...op, type: 'add_mark' }
       }
 
       case 'remove_node': {
@@ -329,7 +290,6 @@ const Operation = {
         return { ...op, type: 'insert_text' }
       }
 
-      case 'set_mark':
       case 'set_node': {
         const { properties, newProperties } = op
         return { ...op, properties: newProperties, newProperties: properties }
@@ -360,20 +320,4 @@ const Operation = {
       }
     }
   },
-}
-
-export {
-  AddMarkOperation,
-  InsertNodeOperation,
-  InsertTextOperation,
-  MergeNodeOperation,
-  MoveNodeOperation,
-  RemoveMarkOperation,
-  RemoveNodeOperation,
-  RemoveTextOperation,
-  SetMarkOperation,
-  SetNodeOperation,
-  SetSelectionOperation,
-  SplitNodeOperation,
-  Operation,
 }

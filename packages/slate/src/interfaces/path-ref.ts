@@ -12,11 +12,15 @@ export interface PathRef {
   unref(): Path | null
 }
 
-export const PathRef = {
+export interface PathRefInterface {
   /**
    * Transform the path ref's current value by an operation.
    */
+  transform: (ref: PathRef, op: Operation) => void
+}
 
+// eslint-disable-next-line no-redeclare
+export const PathRef: PathRefInterface = {
   transform(ref: PathRef, op: Operation): void {
     const { current, affinity } = ref
 

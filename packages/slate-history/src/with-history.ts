@@ -1,117 +1,125 @@
-import { Editor, Command, Operation, Path } from 'slate'
+import { Editor, Operation, Path, Transforms } from 'slate'
 
-import { HistoryCommand } from './history-command'
 import { HistoryEditor } from './history-editor'
 
 /**
  * The `withHistory` plugin keeps track of the operation history of a Slate
  * editor as operations are applied to it, using undo and redo stacks.
+ *
+ * If you are using TypeScript, you must extend Slate's CustomTypes to use
+ * this plugin.
+ *
+ * See https://docs.slatejs.org/concepts/11-typescript to learn how.
  */
 
-export const withHistory = (editor: Editor): Editor => {
-  const { apply, exec } = editor
-  editor.history = { undos: [], redos: [] }
+export const withHistory = <T extends Editor>(editor: T) => {
+  const e = editor as T & HistoryEditor
+  const { apply } = e
+  e.history = { undos: [], redos: [] }
 
-  editor.exec = (command: Command) => {
-    if (HistoryEditor.isHistoryEditor(editor)) {
-      const { history } = editor
-      const { undos, redos } = history
+  e.redo = () => {
+    const { history } = e
+    const { redos } = history
 
-      if (redos.length > 0 && HistoryCommand.isRedoCommand(command)) {
-        const batch = redos[redos.length - 1]
+    if (redos.length > 0) {
+      const batch = redos[redos.length - 1]
 
-        HistoryEditor.withoutSaving(editor, () => {
-          Editor.withoutNormalizing(editor, () => {
-            for (const op of batch) {
-              editor.apply(op)
-            }
-          })
-        })
-
-        history.redos.pop()
-        history.undos.push(batch)
-        return
+      if (batch.selectionBefore) {
+        Transforms.setSelection(e, batch.selectionBefore)
       }
 
-      if (undos.length > 0 && HistoryCommand.isUndoCommand(command)) {
-        const batch = undos[undos.length - 1]
-
-        HistoryEditor.withoutSaving(editor, () => {
-          Editor.withoutNormalizing(editor, () => {
-            const inverseOps = batch.map(Operation.inverse).reverse()
-
-            for (const op of inverseOps) {
-              // If the final operation is deselecting the editor, skip it. This is
-              if (
-                op === inverseOps[inverseOps.length - 1] &&
-                op.type === 'set_selection' &&
-                op.newProperties == null
-              ) {
-                continue
-              } else {
-                editor.apply(op)
-              }
-            }
-          })
+      HistoryEditor.withoutSaving(e, () => {
+        Editor.withoutNormalizing(e, () => {
+          for (const op of batch.operations) {
+            e.apply(op)
+          }
         })
+      })
 
-        history.redos.push(batch)
-        history.undos.pop()
-        return
-      }
+      history.redos.pop()
+      e.writeHistory('undos', batch)
     }
-
-    exec(command)
   }
 
-  editor.apply = (op: Operation) => {
-    if (HistoryEditor.isHistoryEditor(editor)) {
-      const { operations, history } = editor
-      const { undos } = history
-      const lastBatch = undos[undos.length - 1]
-      const lastOp = lastBatch && lastBatch[lastBatch.length - 1]
-      const overwrite = shouldOverwrite(op, lastOp)
-      let save = HistoryEditor.isSaving(editor)
-      let merge = HistoryEditor.isMerging(editor)
+  e.undo = () => {
+    const { history } = e
+    const { undos } = history
 
-      if (save == null) {
-        save = shouldSave(op, lastOp)
-      }
+    if (undos.length > 0) {
+      const batch = undos[undos.length - 1]
 
-      if (save) {
-        if (merge == null) {
-          if (lastBatch == null) {
-            merge = false
-          } else if (operations.length !== 0) {
-            merge = true
-          } else {
-            merge = shouldMerge(op, lastOp) || overwrite
+      HistoryEditor.withoutSaving(e, () => {
+        Editor.withoutNormalizing(e, () => {
+          const inverseOps = batch.operations.map(Operation.inverse).reverse()
+
+          for (const op of inverseOps) {
+            e.apply(op)
           }
-        }
-
-        if (lastBatch && merge) {
-          if (overwrite) {
-            lastBatch.pop()
+          if (batch.selectionBefore) {
+            Transforms.setSelection(e, batch.selectionBefore)
           }
+        })
+      })
 
-          lastBatch.push(op)
+      e.writeHistory('redos', batch)
+      history.undos.pop()
+    }
+  }
+
+  e.apply = (op: Operation) => {
+    const { operations, history } = e
+    const { undos } = history
+    const lastBatch = undos[undos.length - 1]
+    const lastOp =
+      lastBatch && lastBatch.operations[lastBatch.operations.length - 1]
+    let save = HistoryEditor.isSaving(e)
+    let merge = HistoryEditor.isMerging(e)
+
+    if (save == null) {
+      save = shouldSave(op, lastOp)
+    }
+
+    if (save) {
+      if (merge == null) {
+        if (lastBatch == null) {
+          merge = false
+        } else if (operations.includes(lastOp)) {
+          merge = true
         } else {
-          const batch = [op]
-          undos.push(batch)
+          merge = shouldMerge(op, lastOp)
         }
-
-        while (undos.length > 100) {
-          undos.shift()
-        }
-
-        history.redos = []
       }
+
+      if (HistoryEditor.isSplittingOnce(e)) {
+        merge = false
+        HistoryEditor.setSplittingOnce(e, undefined)
+      }
+
+      if (lastBatch && merge) {
+        lastBatch.operations.push(op)
+      } else {
+        const batch = {
+          operations: [op],
+          selectionBefore: e.selection,
+        }
+        e.writeHistory('undos', batch)
+      }
+
+      while (undos.length > 100) {
+        undos.shift()
+      }
+
+      history.redos = []
     }
 
     apply(op)
   }
 
-  return editor
+  e.writeHistory = (stack: 'undos' | 'redos', batch: any) => {
+    e.history[stack].push(batch)
+  }
+
+  return e
 }
 
 /**
@@ -119,10 +127,6 @@ export const withHistory = (editor: Editor): Editor => {
  */
 
 const shouldMerge = (op: Operation, prev: Operation | undefined): boolean => {
-  if (op.type === 'set_selection') {
-    return true
-  }
-
   if (
     prev &&
     op.type === 'insert_text' &&
@@ -151,24 +155,9 @@ const shouldMerge = (op: Operation, prev: Operation | undefined): boolean => {
  */
 
 const shouldSave = (op: Operation, prev: Operation | undefined): boolean => {
-  if (op.type === 'set_selection' && op.newProperties == null) {
+  if (op.type === 'set_selection') {
     return false
   }
 
   return true
-}
-
-/**
- * Check whether an operation should overwrite the previous one.
- */
-
-const shouldOverwrite = (
-  op: Operation,
-  prev: Operation | undefined
-): boolean => {
-  if (prev && op.type === 'set_selection' && prev.type === 'set_selection') {
-    return true
-  }
-
-  return false
 }

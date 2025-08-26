@@ -1,65 +1,83 @@
-import React, { useLayoutEffect, useRef } from 'react'
 import getDirection from 'direction'
-import { Editor, Node, Range, NodeEntry, Element as SlateElement } from 'slate'
+import React, { useCallback } from 'react'
+import { JSX } from 'react'
+import { Editor, Element as SlateElement, Node, DecoratedRange } from 'slate'
+import { ReactEditor, useReadOnly, useSlateStatic } from '..'
+import useChildren from '../hooks/use-children'
+import { isElementDecorationsEqual } from 'slate-dom'
+import {
+  EDITOR_TO_KEY_TO_ELEMENT,
+  ELEMENT_TO_NODE,
+  NODE_TO_ELEMENT,
+  NODE_TO_INDEX,
+  NODE_TO_PARENT,
+} from 'slate-dom'
+import {
+  RenderChunkProps,
+  RenderElementProps,
+  RenderLeafProps,
+  RenderPlaceholderProps,
+  RenderTextProps,
+} from './editable'
 
 import Text from './text'
-import Children from './children'
-import { ReactEditor, useEditor, useReadOnly } from '..'
-import { SelectedContext } from '../hooks/use-selected'
-import {
-  NODE_TO_ELEMENT,
-  ELEMENT_TO_NODE,
-  NODE_TO_PARENT,
-  NODE_TO_INDEX,
-  KEY_TO_ELEMENT,
-} from '../utils/weak-maps'
-import {
-  CustomDecorationProps,
-  CustomElement,
-  CustomElementProps,
-  CustomMarkProps,
-} from './custom'
-import { isRangeListEqual } from '../utils/leaf'
+import { useDecorations } from '../hooks/use-decorations'
+
+const defaultRenderElement = (props: RenderElementProps) => (
+  <DefaultElement {...props} />
+)
 
 /**
  * Element.
  */
 
 const Element = (props: {
-  decorate: (entry: NodeEntry) => Range[]
-  decorations: Range[]
+  decorations: DecoratedRange[]
   element: SlateElement
-  renderDecoration?: (props: CustomDecorationProps) => JSX.Element
-  renderElement?: (props: CustomElementProps) => JSX.Element
-  renderMark?: (props: CustomMarkProps) => JSX.Element
-  selection: Range | null
+  renderElement?: (props: RenderElementProps) => JSX.Element
+  renderChunk?: (props: RenderChunkProps) => JSX.Element
+  renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element
+  renderText?: (props: RenderTextProps) => JSX.Element
+  renderLeaf?: (props: RenderLeafProps) => JSX.Element
 }) => {
   const {
-    decorate,
-    decorations,
+    decorations: parentDecorations,
     element,
-    renderDecoration,
-    renderElement = (p: CustomElementProps) => <CustomElement {...p} />,
-    renderMark,
-    selection,
+    renderElement = defaultRenderElement,
+    renderChunk,
+    renderPlaceholder,
+    renderLeaf,
+    renderText,
   } = props
-  const ref = useRef<HTMLElement>(null)
-  const editor = useEditor()
+  const editor = useSlateStatic()
   const readOnly = useReadOnly()
   const isInline = editor.isInline(element)
+  const decorations = useDecorations(element, parentDecorations)
   const key = ReactEditor.findKey(editor, element)
-
-  let children: JSX.Element | null = (
-    <Children
-      decorate={decorate}
-      decorations={decorations}
-      node={element}
-      renderDecoration={renderDecoration}
-      renderElement={renderElement}
-      renderMark={renderMark}
-      selection={selection}
-    />
+  const ref = useCallback(
+    (ref: HTMLElement | null) => {
+      // Update element-related weak maps with the DOM element ref.
+      const KEY_TO_ELEMENT = EDITOR_TO_KEY_TO_ELEMENT.get(editor)
+      if (ref) {
+        KEY_TO_ELEMENT?.set(key, ref)
+        NODE_TO_ELEMENT.set(element, ref)
+        ELEMENT_TO_NODE.set(ref, element)
+      } else {
+        KEY_TO_ELEMENT?.delete(key)
+        NODE_TO_ELEMENT.delete(element)
+      }
+    },
+    [editor, key, element]
   )
+  let children: React.ReactNode = useChildren({
+    decorations,
+    node: element,
+    renderElement,
+    renderChunk,
+    renderPlaceholder,
+    renderLeaf,
+    renderText,
+  })
 
   // Attributes that the developer must mix into the element in their
   // custom node renderer component.
@@ -82,7 +100,7 @@ const Element = (props: {
   // If it's a block node with inline children, add the proper `dir` attribute
   // for text direction.
   if (!isInline && Editor.hasInlines(editor, element)) {
-    const text = Node.text(element)
+    const text = Node.string(element)
     const dir = getDirection(text)
 
     if (dir === 'rtl') {
@@ -91,7 +109,7 @@ const Element = (props: {
   }
 
   // If it's a void node, wrap the children in extra void-specific elements.
-  if (editor.isVoid(element)) {
+  if (Editor.isVoid(editor, element)) {
     attributes['data-slate-void'] = true
 
     if (!readOnly && isInline) {
@@ -101,7 +119,7 @@ const Element = (props: {
     const Tag = isInline ? 'span' : 'div'
     const [[text]] = Node.texts(element)
 
-    children = readOnly ? null : (
+    children = (
       <Tag
         data-slate-spacer
         style={{
@@ -111,7 +129,13 @@ const Element = (props: {
           position: 'absolute',
         }}
       >
-        <Text decorations={[]} isLast={false} parent={element} text={text} />
+        <Text
+          renderPlaceholder={renderPlaceholder}
+          decorations={[]}
+          isLast={false}
+          parent={element}
+          text={text}
+        />
       </Tag>
     )
 
@@ -119,38 +143,34 @@ const Element = (props: {
     NODE_TO_PARENT.set(text, element)
   }
 
-  // Update element-related weak maps with the DOM element ref.
-  useLayoutEffect(() => {
-    if (ref.current) {
-      KEY_TO_ELEMENT.set(key, ref.current)
-      NODE_TO_ELEMENT.set(element, ref.current)
-      ELEMENT_TO_NODE.set(ref.current, element)
-    } else {
-      KEY_TO_ELEMENT.delete(key)
-      NODE_TO_ELEMENT.delete(element)
-    }
-  })
-
-  return (
-    <SelectedContext.Provider value={!!selection}>
-      {renderElement({ attributes, children, element })}
-    </SelectedContext.Provider>
-  )
+  return renderElement({ attributes, children, element })
 }
 
 const MemoizedElement = React.memo(Element, (prev, next) => {
   return (
-    prev.decorate === next.decorate &&
     prev.element === next.element &&
-    prev.renderDecoration === next.renderDecoration &&
     prev.renderElement === next.renderElement &&
-    prev.renderMark === next.renderMark &&
-    isRangeListEqual(prev.decorations, next.decorations) &&
-    (prev.selection === next.selection ||
-      (!!prev.selection &&
-        !!next.selection &&
-        Range.equals(prev.selection, next.selection)))
+    prev.renderChunk === next.renderChunk &&
+    prev.renderText === next.renderText &&
+    prev.renderLeaf === next.renderLeaf &&
+    prev.renderPlaceholder === next.renderPlaceholder &&
+    isElementDecorationsEqual(prev.decorations, next.decorations)
   )
 })
+
+/**
+ * The default element renderer.
+ */
+
+export const DefaultElement = (props: RenderElementProps) => {
+  const { attributes, children, element } = props
+  const editor = useSlateStatic()
+  const Tag = editor.isInline(element) ? 'span' : 'div'
+  return (
+    <Tag {...attributes} style={{ position: 'relative' }}>
+      {children}
+    </Tag>
+  )
+}
 
 export default MemoizedElement

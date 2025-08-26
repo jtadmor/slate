@@ -1,75 +1,255 @@
 import { produce } from 'immer'
-import {
-  Editor,
-  Element,
-  ElementEntry,
-  MarkEntry,
-  Path,
-  Range,
-  Text,
-  TextEntry,
-} from '..'
+import { Editor, Path, Range, Scrubber, Text } from '..'
+import { Element, ElementEntry } from './element'
 
 /**
  * The `Node` union type represents all of the different types of nodes that
  * occur in a Slate document tree.
  */
 
+export type BaseNode = Editor | Element | Text
 export type Node = Editor | Element | Text
 
-export const Node = {
-  matches(node: Node, props: Partial<Node>): boolean {
-    return (
-      (Element.isElement(node) && Element.matches(node, props)) ||
-      (Text.isText(node) && Text.matches(node, props))
-    )
-  },
+export interface NodeAncestorsOptions {
+  reverse?: boolean
+}
 
+export interface NodeChildrenOptions {
+  reverse?: boolean
+}
+
+export interface NodeDescendantsOptions {
+  from?: Path
+  to?: Path
+  reverse?: boolean
+  pass?: (node: NodeEntry) => boolean
+}
+
+export interface NodeElementsOptions {
+  from?: Path
+  to?: Path
+  reverse?: boolean
+  pass?: (node: NodeEntry) => boolean
+}
+
+export interface NodeIsNodeOptions {
+  deep?: boolean
+}
+
+export interface NodeLevelsOptions {
+  reverse?: boolean
+}
+
+export interface NodeNodesOptions {
+  from?: Path
+  to?: Path
+  reverse?: boolean
+  pass?: (entry: NodeEntry) => boolean
+}
+
+export interface NodeTextsOptions {
+  from?: Path
+  to?: Path
+  reverse?: boolean
+  pass?: (node: NodeEntry) => boolean
+}
+
+export interface NodeInterface {
   /**
    * Get the node at a specific path, asserting that it's an ancestor node.
    */
+  ancestor: (root: Node, path: Path) => Ancestor
 
+  /**
+   * Return a generator of all the ancestor nodes above a specific path.
+   *
+   * By default the order is top-down, from highest to lowest ancestor in
+   * the tree, but you can pass the `reverse: true` option to go bottom-up.
+   */
+  ancestors: (
+    root: Node,
+    path: Path,
+    options?: NodeAncestorsOptions
+  ) => Generator<NodeEntry<Ancestor>, void, undefined>
+
+  /**
+   * Get the child of a node at a specific index.
+   */
+  child: (root: Node, index: number) => Descendant
+
+  /**
+   * Iterate over the children of a node at a specific path.
+   */
+  children: (
+    root: Node,
+    path: Path,
+    options?: NodeChildrenOptions
+  ) => Generator<NodeEntry<Descendant>, void, undefined>
+
+  /**
+   * Get an entry for the common ancesetor node of two paths.
+   */
+  common: (root: Node, path: Path, another: Path) => NodeEntry
+
+  /**
+   * Get the node at a specific path, asserting that it's a descendant node.
+   */
+  descendant: (root: Node, path: Path) => Descendant
+
+  /**
+   * Return a generator of all the descendant node entries inside a root node.
+   */
+  descendants: (
+    root: Node,
+    options?: NodeDescendantsOptions
+  ) => Generator<NodeEntry<Descendant>, void, undefined>
+
+  /**
+   * Return a generator of all the element nodes inside a root node. Each iteration
+   * will return an `ElementEntry` tuple consisting of `[Element, Path]`. If the
+   * root node is an element it will be included in the iteration as well.
+   */
+  elements: (
+    root: Node,
+    options?: NodeElementsOptions
+  ) => Generator<ElementEntry, void, undefined>
+
+  /**
+   * Extract props from a Node.
+   */
+  extractProps: (node: Node) => NodeProps
+
+  /**
+   * Get the first leaf node entry in a root node from a path.
+   */
+  first: (root: Node, path: Path) => NodeEntry
+
+  /**
+   * Get the sliced fragment represented by a range inside a root node.
+   */
+  fragment: <T extends Ancestor = Editor>(
+    root: T,
+    range: Range
+  ) => T['children']
+
+  /**
+   * Get the descendant node referred to by a specific path. If the path is an
+   * empty array, it refers to the root node itself.
+   */
+  get: (root: Node, path: Path) => Node
+
+  /**
+   * Similar to get, but returns undefined if the node does not exist.
+   */
+  getIf: (root: Node, path: Path) => Node | undefined
+
+  /**
+   * Check if a descendant node exists at a specific path.
+   */
+  has: (root: Node, path: Path) => boolean
+
+  /**
+   * Check if a value implements the `Node` interface.
+   */
+  isNode: (value: any, options?: NodeIsNodeOptions) => value is Node
+
+  /**
+   * Check if a value is a list of `Node` objects.
+   */
+  isNodeList: (value: any, options?: NodeIsNodeOptions) => value is Node[]
+
+  /**
+   * Get the last leaf node entry in a root node from a path.
+   */
+  last: (root: Node, path: Path) => NodeEntry
+
+  /**
+   * Get the node at a specific path, ensuring it's a leaf text node.
+   */
+  leaf: (root: Node, path: Path) => Text
+
+  /**
+   * Return a generator of the in a branch of the tree, from a specific path.
+   *
+   * By default the order is top-down, from highest to lowest node in the tree,
+   * but you can pass the `reverse: true` option to go bottom-up.
+   */
+  levels: (
+    root: Node,
+    path: Path,
+    options?: NodeLevelsOptions
+  ) => Generator<NodeEntry, void, undefined>
+
+  /**
+   * Check if a node matches a set of props.
+   */
+  matches: (node: Node, props: Partial<Node>) => boolean
+
+  /**
+   * Return a generator of all the node entries of a root node. Each entry is
+   * returned as a `[Node, Path]` tuple, with the path referring to the node's
+   * position inside the root node.
+   */
+  nodes: (
+    root: Node,
+    options?: NodeNodesOptions
+  ) => Generator<NodeEntry, void, undefined>
+
+  /**
+   * Get the parent of a node at a specific path.
+   */
+  parent: (root: Node, path: Path) => Ancestor
+
+  /**
+   * Get the concatenated text string of a node's content.
+   *
+   * Note that this will not include spaces or line breaks between block nodes.
+   * It is not a user-facing string, but a string for performing offset-related
+   * computations for a node.
+   */
+  string: (node: Node) => string
+
+  /**
+   * Return a generator of all leaf text nodes in a root node.
+   */
+  texts: (
+    root: Node,
+    options?: NodeTextsOptions
+  ) => Generator<NodeEntry<Text>, void, undefined>
+}
+
+// eslint-disable-next-line no-redeclare
+export const Node: NodeInterface = {
   ancestor(root: Node, path: Path): Ancestor {
     const node = Node.get(root, path)
 
     if (Text.isText(node)) {
       throw new Error(
-        `Cannot get the ancestor node at path [${path}] because it refers to a text node instead: ${node}`
+        `Cannot get the ancestor node at path [${path}] because it refers to a text node instead: ${Scrubber.stringify(
+          node
+        )}`
       )
     }
 
     return node
   },
 
-  /**
-   * Return an iterable of all the ancestor nodes above a specific path.
-   *
-   * By default the order is bottom-up, from lowest to highest ancestor in
-   * the tree, but you can pass the `reverse: true` option to go top-down.
-   */
-
   *ancestors(
     root: Node,
     path: Path,
-    options: {
-      reverse?: boolean
-    } = {}
-  ): Iterable<AncestorEntry> {
+    options: NodeAncestorsOptions = {}
+  ): Generator<NodeEntry<Ancestor>, void, undefined> {
     for (const p of Path.ancestors(path, options)) {
       const n = Node.ancestor(root, p)
-      const entry: AncestorEntry = [n, p]
+      const entry: NodeEntry<Ancestor> = [n, p]
       yield entry
     }
   },
 
-  /**
-   * Get the child of a node at a specific index.
-   */
-
   child(root: Node, index: number): Descendant {
     if (Text.isText(root)) {
       throw new Error(
-        `Cannot get the child of a text node: ${JSON.stringify(root)}`
+        `Cannot get the child of a text node: ${Scrubber.stringify(root)}`
       )
     }
 
@@ -77,7 +257,7 @@ export const Node = {
 
     if (c == null) {
       throw new Error(
-        `Cannot get child at index \`${index}\` in node: ${JSON.stringify(
+        `Cannot get child at index \`${index}\` in node: ${Scrubber.stringify(
           root
         )}`
       )
@@ -86,25 +266,23 @@ export const Node = {
     return c
   },
 
-  /**
-   * Find the closest matching node entry starting from a specific path.
-   */
-
-  closest(
+  *children(
     root: Node,
     path: Path,
-    predicate: (entry: NodeEntry) => boolean
-  ): NodeEntry | undefined {
-    for (const entry of Node.levels(root, path, { reverse: true })) {
-      if (predicate(entry)) {
-        return entry
-      }
+    options: NodeChildrenOptions = {}
+  ): Generator<NodeEntry<Descendant>, void, undefined> {
+    const { reverse = false } = options
+    const ancestor = Node.ancestor(root, path)
+    const { children } = ancestor
+    let index = reverse ? children.length - 1 : 0
+
+    while (reverse ? index >= 0 : index < children.length) {
+      const child = Node.child(ancestor, index)
+      const childPath = path.concat(index)
+      yield [child, childPath]
+      index = reverse ? index - 1 : index + 1
     }
   },
-
-  /**
-   * Get an entry for the common ancesetor node of two paths.
-   */
 
   common(root: Node, path: Path, another: Path): NodeEntry {
     const p = Path.common(path, another)
@@ -112,59 +290,37 @@ export const Node = {
     return [n, p]
   },
 
-  /**
-   * Get the node at a specific path, asserting that it's a descendant node.
-   */
-
   descendant(root: Node, path: Path): Descendant {
     const node = Node.get(root, path)
 
     if (Editor.isEditor(node)) {
       throw new Error(
-        `Cannot get the descendant node at path [${path}] because it refers to the root editor node instead: ${node}`
+        `Cannot get the descendant node at path [${path}] because it refers to the root editor node instead: ${Scrubber.stringify(
+          node
+        )}`
       )
     }
 
     return node
   },
 
-  /**
-   * Return an iterable of all the descendant node entries inside a root node.
-   */
-
   *descendants(
     root: Node,
-    options: {
-      from?: Path
-      to?: Path
-      reverse?: boolean
-      pass?: (node: NodeEntry) => boolean
-    } = {}
-  ): Iterable<DescendantEntry> {
+    options: NodeDescendantsOptions = {}
+  ): Generator<NodeEntry<Descendant>, void, undefined> {
     for (const [node, path] of Node.nodes(root, options)) {
       if (path.length !== 0) {
         // NOTE: we have to coerce here because checking the path's length does
         // guarantee that `node` is not a `Editor`, but TypeScript doesn't know.
-        yield [node, path] as DescendantEntry
+        yield [node, path] as NodeEntry<Descendant>
       }
     }
   },
 
-  /**
-   * Return an iterable of all the element nodes inside a root node. Each iteration
-   * will return an `ElementEntry` tuple consisting of `[Element, Path]`. If the
-   * root node is an element it will be included in the iteration as well.
-   */
-
   *elements(
     root: Node,
-    options: {
-      from?: Path
-      to?: Path
-      reverse?: boolean
-      pass?: (node: NodeEntry) => boolean
-    } = {}
-  ): Iterable<ElementEntry> {
+    options: NodeElementsOptions = {}
+  ): Generator<ElementEntry, void, undefined> {
     for (const [node, path] of Node.nodes(root, options)) {
       if (Element.isElement(node)) {
         yield [node, path]
@@ -172,9 +328,17 @@ export const Node = {
     }
   },
 
-  /**
-   * Get the first node entry in a root node from a path.
-   */
+  extractProps(node: Node): NodeProps {
+    if (Element.isAncestor(node)) {
+      const { children, ...properties } = node
+
+      return properties
+    } else {
+      const { text, ...properties } = node
+
+      return properties
+    }
+  },
 
   first(root: Node, path: Path): NodeEntry {
     const p = path.slice()
@@ -192,27 +356,15 @@ export const Node = {
     return [n, p]
   },
 
-  /**
-   * Get the sliced fragment represented by a range inside a root node.
-   */
-
-  fragment(root: Node, range: Range): Descendant[] {
-    if (Text.isText(root)) {
-      throw new Error(
-        `Cannot get a fragment starting from a root text node: ${JSON.stringify(
-          root
-        )}`
-      )
-    }
-
-    const newRoot = produce(root, r => {
+  fragment<T extends Ancestor = Editor>(root: T, range: Range): T['children'] {
+    const newRoot = produce({ children: root.children }, r => {
       const [start, end] = Range.edges(range)
-      const iterable = Node.nodes(r, {
+      const nodeEntries = Node.nodes(r, {
         reverse: true,
         pass: ([, path]) => !Range.includes(range, path),
       })
 
-      for (const [, path] of iterable) {
+      for (const [, path] of nodeEntries) {
         if (!Range.includes(range, path)) {
           const parent = Node.parent(r, path)
           const index = path[path.length - 1]
@@ -230,45 +382,34 @@ export const Node = {
         }
       }
 
-      delete r.selection
+      if (Editor.isEditor(r)) {
+        r.selection = null
+      }
     })
 
     return newRoot.children
   },
 
-  /**
-   * Find the furthest matching node entry starting from a specific path.
-   */
-
-  furthest(
-    root: Node,
-    path: Path,
-    predicate: (entry: NodeEntry) => boolean
-  ): NodeEntry | undefined {
-    for (const entry of Node.levels(root, path)) {
-      if (predicate(entry)) {
-        return entry
-      }
+  get(root: Node, path: Path): Node {
+    const node = Node.getIf(root, path)
+    if (node === undefined) {
+      throw new Error(
+        `Cannot find a descendant at path [${path}] in node: ${Scrubber.stringify(
+          root
+        )}`
+      )
     }
+    return node
   },
 
-  /**
-   * Get the descendant node referred to by a specific path. If the path is an
-   * empty array, it refers to the root node itself.
-   */
-
-  get(root: Node, path: Path): Node {
+  getIf(root: Node, path: Path): Node | undefined {
     let node = root
 
     for (let i = 0; i < path.length; i++) {
       const p = path[i]
 
       if (Text.isText(node) || !node.children[p]) {
-        throw new Error(
-          `Cannot find a descendant at path [${path}] in node: ${JSON.stringify(
-            root
-          )}`
-        )
+        return
       }
 
       node = node.children[p]
@@ -276,10 +417,6 @@ export const Node = {
 
     return node
   },
-
-  /**
-   * Check if a descendant node exists at a specific path.
-   */
 
   has(root: Node, path: Path): boolean {
     let node = root
@@ -297,27 +434,22 @@ export const Node = {
     return true
   },
 
-  /**
-   * Check if a value implements the `Node` interface.
-   */
-
-  isNode(value: any): value is Node {
+  isNode(value: any, { deep = false }: NodeIsNodeOptions = {}): value is Node {
     return (
-      Text.isText(value) || Element.isElement(value) || Editor.isEditor(value)
+      Text.isText(value) ||
+      Element.isElement(value, { deep }) ||
+      Editor.isEditor(value, { deep })
     )
   },
 
-  /**
-   * Check if a value is a list of `Node` objects.
-   */
-
-  isNodeList(value: any): value is Node[] {
-    return Array.isArray(value) && (value.length === 0 || Node.isNode(value[0]))
+  isNodeList(
+    value: any,
+    { deep = false }: NodeIsNodeOptions = {}
+  ): value is Node[] {
+    return (
+      Array.isArray(value) && value.every(val => Node.isNode(val, { deep }))
+    )
   },
-
-  /**
-   * Get the lash node entry in a root node from a path.
-   */
 
   last(root: Node, path: Path): NodeEntry {
     const p = path.slice()
@@ -336,78 +468,46 @@ export const Node = {
     return [n, p]
   },
 
-  /**
-   * Get the node at a specific path, ensuring it's a leaf text node.
-   */
-
   leaf(root: Node, path: Path): Text {
     const node = Node.get(root, path)
 
     if (!Text.isText(node)) {
       throw new Error(
-        `Cannot get the leaf node at path [${path}] because it refers to a non-leaf node: ${node}`
+        `Cannot get the leaf node at path [${path}] because it refers to a non-leaf node: ${Scrubber.stringify(
+          node
+        )}`
       )
     }
 
     return node
   },
 
-  /**
-   * Return an iterable of the in a branch of the tree, from a specific path.
-   *
-   * By default the order is top-down, from lowest to highest node in the tree,
-   * but you can pass the `reverse: true` option to go bottom-up.
-   */
-
   *levels(
     root: Node,
     path: Path,
-    options: {
-      reverse?: boolean
-    } = {}
-  ): Iterable<NodeEntry> {
+    options: NodeLevelsOptions = {}
+  ): Generator<NodeEntry, void, undefined> {
     for (const p of Path.levels(path, options)) {
       const n = Node.get(root, p)
       yield [n, p]
     }
   },
 
-  /**
-   * Return an iterable of all the marks in all of the text nodes in a root node.
-   */
-
-  *marks(
-    root: Node,
-    options: {
-      from?: Path
-      to?: Path
-      reverse?: boolean
-      pass?: (node: NodeEntry) => boolean
-    } = {}
-  ): Iterable<MarkEntry> {
-    for (const [node, path] of Node.texts(root, options)) {
-      for (let i = 0; i < node.marks.length; i++) {
-        const mark = node.marks[i]
-        yield [mark, i, node, path]
-      }
-    }
+  matches(node: Node, props: Partial<Node>): boolean {
+    return (
+      (Element.isElement(node) &&
+        Element.isElementProps(props) &&
+        Element.matches(node, props)) ||
+      (Text.isText(node) &&
+        Text.isTextProps(props) &&
+        Text.matches(node, props))
+    )
   },
-
-  /**
-   * Return an iterable of all the node entries of a root node. Each entry is
-   * returned as a `[Node, Path]` tuple, with the path referring to the node's
-   * position inside the root node.
-   */
 
   *nodes(
     root: Node,
-    options: {
-      from?: Path
-      to?: Path
-      reverse?: boolean
-      pass?: (entry: NodeEntry) => boolean
-    } = {}
-  ): Iterable<NodeEntry> {
+    options: NodeNodesOptions = {}
+  ): Generator<NodeEntry, void, undefined> {
     const { pass, reverse = false } = options
     const { from = [], to } = options
     const visited = new Set()
@@ -423,7 +523,7 @@ export const Node = {
         yield [n, p]
       }
 
-      // If we're allowed to go downward and we haven't decsended yet, do.
+      // If we're allowed to go downward and we haven't descended yet, do.
       if (
         !visited.has(n) &&
         !Text.isText(n) &&
@@ -473,10 +573,6 @@ export const Node = {
     }
   },
 
-  /**
-   * Get the parent of a node at a specific path.
-   */
-
   parent(root: Node, path: Path): Ancestor {
     const parentPath = Path.parent(path)
     const p = Node.get(root, parentPath)
@@ -490,35 +586,18 @@ export const Node = {
     return p
   },
 
-  /**
-   * Get the concatenated text string of a node's content.
-   *
-   * Note that this will not include spaces or line breaks between block nodes.
-   * It is not a user-facing string, but a string for performing offset-related
-   * computations for a node.
-   */
-
-  text(node: Node): string {
+  string(node: Node): string {
     if (Text.isText(node)) {
       return node.text
     } else {
-      return node.children.map(Node.text).join('')
+      return node.children.map(Node.string).join('')
     }
   },
 
-  /**
-   * Return an iterable of all leaf text nodes in a root node.
-   */
-
   *texts(
     root: Node,
-    options: {
-      from?: Path
-      to?: Path
-      reverse?: boolean
-      pass?: (node: NodeEntry) => boolean
-    } = {}
-  ): Iterable<TextEntry> {
+    options: NodeTextsOptions = {}
+  ): Generator<NodeEntry<Text>, void, undefined> {
     for (const [node, path] of Node.nodes(root, options)) {
       if (Text.isText(node)) {
         yield [node, path]
@@ -549,34 +628,12 @@ export type Ancestor = Editor | Element
  * node in the document.
  */
 
-export type NodeEntry = [Node, Path]
+export type NodeEntry<T extends Node = Node> = [T, Path]
 
 /**
- * `DescendantEntry` objects are returned when iterating over the descendants in
- * a Slate document tree.
+ * Convenience type for returning the props of a node.
  */
-
-export type DescendantEntry = [Descendant, Path]
-
-/**
- * `AncestorEntry` objects are returned when iterating over the ancestors in a
- * Slate document tree.
- */
-
-export type AncestorEntry = [Ancestor, Path]
-
-/**
- * `NodeMatch` values are used as shorthands for matching a node by either its
- * kind, its location, its behavior or its properties.
- */
-
-export type NodeMatch =
-  | 'block'
-  | 'element'
-  | 'inline'
-  | 'inline-element'
-  | 'text'
-  | 'editor'
-  | 'void'
-  | Partial<Node>
-  | ((entry: NodeEntry) => boolean)
+export type NodeProps =
+  | Omit<Editor, 'children'>
+  | Omit<Element, 'children'>
+  | Omit<Text, 'text'>

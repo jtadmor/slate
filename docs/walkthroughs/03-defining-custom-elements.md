@@ -1,4 +1,4 @@
-# Defining Custom Block Nodes
+# Defining Custom Elements
 
 In our previous example, we started with a paragraph, but we never actually told Slate anything about the `paragraph` block type. We just let it use its internal default renderer, which uses a plain old `<div>`.
 
@@ -6,16 +6,24 @@ But that's not all you can do. Slate lets you define any type of custom blocks y
 
 We'll show you how. Let's start with our app from earlier:
 
-```js
+```jsx
+const initialValue = [
+  {
+    type: 'paragraph',
+    children: [{ text: 'A line of text in a paragraph.' }],
+  },
+]
+
 const App = () => {
-  const editor = useMemo(() => withReact(createEditor()), [])
+  const [editor] = useState(() => withReact(createEditor()))
+
   return (
-    <Slate editor={editor} defaultValue={defaultValue}>
+    <Slate editor={editor} initialValue={initialValue}>
       <Editable
         onKeyDown={event => {
           if (event.key === '&') {
             event.preventDefault()
-            editor.exec({ type: 'insert_text', text: 'and' })
+            editor.insertText('and')
           }
         }}
       />
@@ -30,7 +38,7 @@ The problem is, code blocks won't just be rendered as a plain paragraph, they'll
 
 Element renderers are just simple React components, like so:
 
-```js
+```jsx
 // Define a React component renderer for our code blocks.
 const CodeElement = props => {
   return (
@@ -49,7 +57,7 @@ And see that `props.children` reference? Slate will automatically render all of 
 
 And here's a component for the "default" elements:
 
-```js
+```jsx
 const DefaultElement = props => {
   return <p {...props.attributes}>{props.children}</p>
 }
@@ -57,9 +65,16 @@ const DefaultElement = props => {
 
 Now, let's add that renderer to our `Editor`:
 
-```js
+```jsx
+const initialValue = [
+  {
+    type: 'paragraph',
+    children: [{ text: 'A line of text in a paragraph.' }],
+  },
+]
+
 const App = () => {
-  const editor = useMemo(() => withReact(createEditor()), [])
+  const [editor] = useState(() => withReact(createEditor()))
 
   // Define a rendering function based on the element passed to `props`. We use
   // `useCallback` here to memoize the function for subsequent renders.
@@ -73,14 +88,14 @@ const App = () => {
   }, [])
 
   return (
-    <Slate editor={editor} defaultValue={defaultValue}>
+    <Slate editor={editor} initialValue={initialValue}>
       <Editable
         // Pass in the `renderElement` function.
         renderElement={renderElement}
         onKeyDown={event => {
           if (event.key === '&') {
             event.preventDefault()
-            editor.exec({ type: 'insert_text', text: 'and' })
+            editor.insertText('and')
           }
         }}
       />
@@ -101,14 +116,22 @@ const DefaultElement = props => {
 }
 ```
 
-Okay, but now we'll need a way for the user to actually turn a block into a code block. So let's change our `onKeyDown` function to add a ``Ctrl-` `` shortcut that does just that:
+Okay, but now we'll need a way for the user to actually turn a block into a code block. So let's change our `onKeyDown` function to add a `` Ctrl-` `` shortcut that does just that:
 
-```js
-// Import the `Editor` helpers from Slate.
-import { Editor } from 'slate'
+```jsx
+// Import the `Editor` and `Transforms` helpers from Slate.
+import { Editor, Transforms, Element } from 'slate'
+
+const initialValue = [
+  {
+    type: 'paragraph',
+    children: [{ text: 'A line of text in a paragraph.' }],
+  },
+]
 
 const App = () => {
-  const editor = useMemo(() => withReact(createEditor()), [])
+  const [editor] = useState(() => withReact(createEditor()))
+
   const renderElement = useCallback(props => {
     switch (props.element.type) {
       case 'code':
@@ -119,7 +142,7 @@ const App = () => {
   }, [])
 
   return (
-    <Slate editor={editor} defaultValue={defaultValue}>
+    <Slate editor={editor} initialValue={initialValue}>
       <Editable
         renderElement={renderElement}
         onKeyDown={event => {
@@ -127,7 +150,11 @@ const App = () => {
             // Prevent the "`" from being inserted by default.
             event.preventDefault()
             // Otherwise, set the currently selected blocks type to "code".
-            Editor.setNodes(editor, { type: 'code' }, { match: 'block' })
+            Transforms.setNodes(
+              editor,
+              { type: 'code' },
+              { match: n => Element.isElement(n) && Editor.isBlock(editor, n) }
+            )
           }
         }}
       />
@@ -148,14 +175,21 @@ const DefaultElement = props => {
 }
 ```
 
-Now, if you press ``Ctrl-` `` the block your cursor is in should turn into a code block! Magic!
+Now, if you press `` Ctrl-` `` the block your cursor is in should turn into a code block! Magic!
 
-But we forgot one thing. When you hit ``Ctrl-` `` again, it should change the code block back into a paragraph. To do that, we'll need to add a bit of logic to change the type we set based on whether any of the currently selected blocks are already a code block:
+But we forgot one thing. When you hit `` Ctrl-` `` again, it should change the code block back into a paragraph. To do that, we'll need to add a bit of logic to change the type we set based on whether any of the currently selected blocks are already a code block:
 
-```js
+```jsx
+const initialValue = [
+  {
+    type: 'paragraph',
+    children: [{ text: 'A line of text in a paragraph.' }],
+  },
+]
+
 const App = () => {
-  const [value, setValue] = useState(initialValue)
-  const editor = useMemo(() => withReact(createEditor()), [])
+  const [editor] = useState(() => withReact(createEditor()))
+
   const renderElement = useCallback(props => {
     switch (props.element.type) {
       case 'code':
@@ -166,23 +200,21 @@ const App = () => {
   }, [])
 
   return (
-    <Slate editor={editor} defaultValue={defaultValue}>
+    <Slate editor={editor} initialValue={initialValue}>
       <Editable
         renderElement={renderElement}
         onKeyDown={event => {
           if (event.key === '`' && event.ctrlKey) {
             event.preventDefault()
             // Determine whether any of the currently selected blocks are code blocks.
-            const { selection } = editor
-            const isCode = selection
-              ? Editor.match(editor, selection, { type: 'code' })
-              : false
-
-            // Toggle the block type depending on `isCode`.
-            Editor.setNodes(
+            const [match] = Editor.nodes(editor, {
+              match: n => n.type === 'code',
+            })
+            // Toggle the block type depending on whether there's already a match.
+            Transforms.setNodes(
               editor,
-              { type: isCode ? 'paragraph' : 'code' },
-              { match: 'block' }
+              { type: match ? 'paragraph' : 'code' },
+              { match: n => Element.isElement(n) && Editor.isBlock(editor, n) }
             )
           }
         }}
@@ -192,4 +224,4 @@ const App = () => {
 }
 ```
 
-And there you have it! If you press ``Ctrl-` `` while inside a code block, it should turn back into a paragraph!
+And there you have it! If you press `` Ctrl-` `` while inside a code block, it should turn back into a paragraph!
